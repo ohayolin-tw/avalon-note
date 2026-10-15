@@ -149,6 +149,8 @@ const recalcGameState = () => {
     
     if (GAME.successCount >= 3) GAME.status = 'assassin';
     else GAME.status = 'playing';
+    if (GAME.failCount >= 3) GAME.status = 'endgame';
+    else GAME.status = 'playing';
 
     checkPendingLakeState();
 };
@@ -277,12 +279,19 @@ const utilsUpdateUI = () => {
     $('#legend-fails-req').innerText = GAME.playerCount >= 7 ? `(第4輪需2失敗才失敗)` : '';
 
     GAME.status === 'assassin' ? show($('#assassin-phase-banner')) : hide($('#assassin-phase-banner'));
+    GAME.status === 'endgame' ? show($('#endgame-phase-banner')) : hide($('#endgame-phase-banner'));
     
     if (GAME.pendingLake) {
         show($('#lake-pending-banner')); hide($('#btn-open-action'));
     } else {
         hide($('#lake-pending-banner'));
         GAME.status === 'assassin' ? hide($('#btn-open-action')) : show($('#btn-open-action'));
+    }
+    if (GAME.pendingLake) {
+        show($('#lake-pending-banner')); hide($('#btn-open-action'));
+    } else {
+        hide($('#lake-pending-banner'));
+        GAME.status === 'endgame' ? hide($('#btn-open-action')) : show($('#btn-open-action'));
     }
 
     if (GAME.useLake && GAME.playerCount >= 8) {
@@ -430,8 +439,12 @@ const renderTaggingGrid = () => {
 };
 
 const openActionSheet = (mode = 'team') => {
-    TEMP_VOTE.editIndex = -1; $('#action-sheet').classList.remove('minimized'); $('#action-sheet').classList.add('open');
+    document.body.classList.add('sheet-active'); // 隱藏浮動按鈕
+    TEMP_VOTE.editIndex = -1; 
+    $('#action-sheet').classList.remove('minimized'); 
+    $('#action-sheet').classList.add('open');
     $('#btn-minimize-sheet').innerText = '收合';
+    
     if (mode === 'team') {
         TEMP_VOTE.team = []; TEMP_VOTE.votes = {}; let req = calcReqTeamSize();
         $('#require-team-size').innerText = req; $('#sheet-title').innerText = `${GAME.currentRound}-${GAME.currentAttempt} 派車 (隊長: ${GAME.currentCaptain}號)`;
@@ -449,11 +462,21 @@ const openActionSheet = (mode = 'team') => {
     }
 };
 
+const closeActionSheet = () => {
+    document.body.classList.remove('sheet-active'); // 重新顯示浮動按鈕
+    $('#action-sheet').classList.remove('open', 'minimized');
+};
+
 window.openEditSheet = (index) => {
     let rec = GAME.history[index];
     if (rec.votes === 'skipped') return alert('尾派不計票模式無法編輯單人選票。');
-    TEMP_VOTE.editIndex = index; $('#action-sheet').classList.remove('minimized'); $('#action-sheet').classList.add('open');
+    
+    document.body.classList.add('sheet-active'); // 隱藏浮動按鈕
+    TEMP_VOTE.editIndex = index; 
+    $('#action-sheet').classList.remove('minimized'); 
+    $('#action-sheet').classList.add('open');
     $('#btn-minimize-sheet').innerText = '收合';
+    
     hide($('#step-team-build')); show($('#step-vote')); hide($('#btn-confirm-vote')); show($('#btn-save-edit')); hide($('#hammer-option'));
     $('#sheet-title').innerText = `編輯 ${rec.round}-${rec.attempt} 投票`; TEMP_VOTE.team = rec.team; TEMP_VOTE.votes = {...rec.votes};
     let grid = $('#vote-record-grid'); grid.innerHTML = '';
@@ -467,12 +490,17 @@ window.openEditSheet = (index) => {
 
 const logicCommitVote = (skipVote = false) => {
     const passed = (skipVote ? GAME.playerCount : countApproves(TEMP_VOTE.votes)) > GAME.playerCount / 2;
+    
+    // 如果是編輯模式
     if (TEMP_VOTE.editIndex > -1) {
         GAME.history[TEMP_VOTE.editIndex].votes = skipVote ? 'skipped' : { ...TEMP_VOTE.votes };
         GAME.history[TEMP_VOTE.editIndex].passed = passed;
-        recalcGameState(); saveState(GAME); utilsUpdateUI(); $('#action-sheet').classList.remove('open', 'minimized'); return;
+        recalcGameState(); saveState(GAME); utilsUpdateUI(); 
+        closeActionSheet(); // 關閉面板並顯示浮動按鈕
+        return;
     }
     
+    // 如果是全新派車
     let newRec = { round: GAME.currentRound, attempt: GAME.currentAttempt, captain: GAME.currentCaptain, team: [...TEMP_VOTE.team], votes: skipVote ? 'skipped' : { ...TEMP_VOTE.votes }, passed: passed, suspectMarks: {} };
     GAME.history.push(newRec);
 
@@ -483,9 +511,10 @@ const logicCommitVote = (skipVote = false) => {
         
         GAME.pendingMissionIndex = GAME.history.length - 1; 
         saveState(GAME); openMissionModal(GAME.pendingMissionIndex);
-        $('#action-sheet').classList.remove('open', 'minimized');
+        closeActionSheet(); // 關閉面板並顯示浮動按鈕
     } else {
-        recalcGameState(); saveState(GAME); utilsUpdateUI(); $('#action-sheet').classList.remove('open', 'minimized');
+        recalcGameState(); saveState(GAME); utilsUpdateUI(); 
+        closeActionSheet(); // 關閉面板並顯示浮動按鈕
     }
 };
 
@@ -581,8 +610,12 @@ window.onload = () => {
     };
 
     $('#btn-open-action').onclick = () => openActionSheet('team');
-    $('#btn-minimize-sheet').onclick = () => { 
+
+    $('.sheet-header').onclick = (e) => { 
         const sheet = $('#action-sheet');
+        
+        if (e.target.tagName === 'BUTTON' && e.target.id !== 'btn-minimize-sheet') return; 
+
         if (sheet.classList.contains('minimized')) {
             sheet.classList.remove('minimized');
             $('#btn-minimize-sheet').innerText = '收合';
