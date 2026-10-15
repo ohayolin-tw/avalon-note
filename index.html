@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>阿瓦隆派票邏輯紀錄器</title>
+    <title>阿瓦隆紀錄器</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -110,26 +110,24 @@
         </div>
 
         <div id="assassin-phase-banner" class="hidden banner-danger">
-            <h3>⚠️ 刺殺階段 ⚠️</h3>
+            <h3>刺殺階段</h3>
             <p>好人已成功 3 次！請壞人討論並由刺客執行刺殺</p>
         </div>
 
         <div id="lake-pending-banner" class="hidden banner-warning">
-            <h3>🧚‍♀️ 等待湖中仙女查驗 🧚‍♀️</h3>
-            <p>請完成查驗紀錄後，才能繼續下一輪遊戲。</p>
+            <h3>等待湖中仙女查驗</h3>
             <button id="btn-force-lake" class="primary-btn" style="margin-top:10px;">開啟湖女紀錄面板</button>
         </div>
 
         <div class="legend">
-            <span><code>⚪</code>車上白</span>
+            <span><code>⚪</code>內白</span>
             <span><code>⚫!</code>內黑</span>
             <span><code>⚪!</code>外白</span>
-            <span><code>⚫</code>車下黑</span>
+            <span><code>⚫</code>外黑</span>
             <span>🟦隊長</span>
-            <span style="border:2px solid #e67e22; background:#fef9e7; padding:0 3px;">黃底橘框:車上</span>
+            <span style="border:2px solid #e67e22; background:#fef9e7; padding:0 3px;">橘框:車上</span>
             <span id="legend-fails-req" style="color:var(--danger); font-weight:bold;"></span>
         </div>
-        <p class="hint private-info" style="text-align:center; margin-bottom:5px;">💡提示：點擊「失敗車次」的車上人員，可標記嫌疑犯 (🟢/🟥)</p>
 
         <div class="table-container">
             <table id="record-table">
@@ -141,18 +139,18 @@
         </div>
 
         <div id="lake-section" class="hidden config-box private-info" style="margin-top:10px; margin-bottom: 80px;">
-            <h4>🧚‍♀️ 湖中仙女 (當前持有: <span id="lake-holder"></span>號)</h4>
+            <h4> 湖中仙女 (當前持有: <span id="lake-holder"></span>號)</h4>
             <div id="lake-history"></div>
         </div>
 
         <button id="btn-open-action" class="floating-btn">派車 / 投票</button>
     </section>
 
-    <!-- 3. 底部抽屜 (無動畫) -->
+    <!-- 3. 底部  -->
     <div id="action-sheet" class="bottom-sheet">
         <div class="sheet-header">
             <h3 id="sheet-title">1-1 派車</h3>
-            <button id="btn-minimize-sheet" class="minimal-btn">收合對照</button>
+            <button id="btn-minimize-sheet" class="minimal-btn">收合</button>
         </div>
         <div class="sheet-content">
             <div id="step-team-build">
@@ -162,7 +160,7 @@
             </div>
 
             <div id="step-vote" class="hidden">
-                <p>請記錄黑白球 (預設車上白、車下黑)：</p>
+                <p>請記錄黑白球 (預設內白、外黑)：</p>
                 <div class="player-grid" id="vote-record-grid"></div>
                 <div class="hammer-option hidden" id="hammer-option">
                     <label class="checkbox-label"><input type="checkbox" id="skip-vote-cb"> 尾派不計票，直接出發</label>
@@ -193,7 +191,7 @@
         <div class="modal-content">
             <h3>紀錄湖中仙女</h3>
             <div class="form-group">
-                <label>查驗對象 (排除曾持有人)：</label>
+                <label>查驗對象：</label>
                 <select id="lake-target" class="modern-select"></select>
             </div>
             <div class="form-group">

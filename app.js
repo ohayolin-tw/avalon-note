@@ -6,8 +6,8 @@ const loadState = () => JSON.parse(localStorage.getItem('avalonV8'));
 const clearState = () => localStorage.removeItem('avalonV8');
 
 // TAG 專用持久化函數
-const DEFAULT_TAGS = ['鐵好', '鐵壞', '滑水', '帶風向', '被發好人', '被發查殺'];
-const saveTags = () => localStorage.setItem('avalonV8_tags', JSON.stringify(GAME.customTags));
+const DEFAULT_TAGS = ['鐵好', '鐵壞', '滑水', '帶風向', '外灑', '內黑', '外白'];
+const saveTags = () => localStorage.setItem('avalon_tags', JSON.stringify(GAME.customTags));
 
 const RULE_BOOK = {
     5:  { evil: 2, missions: [2, 3, 2, 3, 3] },
@@ -263,12 +263,12 @@ $('#btn-close-tag-modal').onclick = () => {
 // ==========================================
 const utilsUpdateUI = () => {
     document.body.classList.toggle('privacy-mode', GAME.privacy);
-    $('#btn-privacy').innerText = GAME.privacy ? '🙈 顯示機密' : '👁️ 隱藏機密';
+    $('#btn-privacy').innerText = GAME.privacy ? '顯示機密' : '隱藏機密';
 
     $('#status-round').innerText = `第 ${GAME.currentRound} 輪 (${GAME.currentAttempt}/5)`;
     $('#status-mission').innerText = `任務需求: ${calcReqTeamSize()}人`;
-    $('#status-score').innerText = `好人:${GAME.successCount} | 壞人:${GAME.failCount}`;
-    $('#legend-fails-req').innerText = GAME.playerCount >= 7 ? `(第4輪需2黑才失敗)` : '';
+    $('#status-score').innerText = `任務進度：好人:${GAME.successCount} | 壞人:${GAME.failCount}`;
+    $('#legend-fails-req').innerText = GAME.playerCount >= 7 ? `(第4輪需2失敗才失敗)` : '';
 
     GAME.status === 'assassin' ? show($('#assassin-phase-banner')) : hide($('#assassin-phase-banner'));
     
@@ -291,7 +291,7 @@ const utilsUpdateUI = () => {
     for (let i = 1; i <= GAME.playerCount; i++) {
         let badge = logicGetVisionBadge(i);
         let lakeChecked = GAME.lake.history.find(h => h.to === i);
-        let lakeBadgeHtml = lakeChecked ? `<div style="font-size:0.75rem; font-weight:bold; color:${lakeChecked.res === 'evil'?'#d9534f':'#0dad0d'};">🧚${lakeChecked.res === 'evil'?'壞':'好'}</div>` : '';
+        let lakeBadgeHtml = lakeChecked ? `<div style="font-size:0.75rem; font-weight:bold; color:${lakeChecked.res === 'evil'?'#d9534f':'#0dad0d'};">${lakeChecked.res === 'evil'?'壞':'好'}</div>` : '';
         
         let m1 = icons[GAME.tableMarks1[i] || 0]; let m2 = icons[GAME.tableMarks2[i] || 0];
         let pTags = GAME.playerTags[i] || [];
@@ -349,7 +349,7 @@ const utilsUpdateUI = () => {
                 let resTr = document.createElement('tr');
                 let isFail = rec.failVotes >= calcFailsNeeded(rec.round);
                 resTr.className = isFail ? 'fail-row' : 'success-row';
-                let resBadge = isFail ? `<span class="badge-result badge-fail">🔴 任務失敗 (${rec.failVotes}黑)</span>` : `<span class="badge-result badge-success">🟢 任務成功 (全白)</span>`;
+                let resBadge = isFail ? `<span class="badge-result badge-fail">🔴 任務失敗 (${rec.failVotes}黑)</span>` : `<span class="badge-result badge-success">🟢 任務成功</span>`;
                 let editMissBtn = `<button class="edit-btn" style="margin-left:10px;" onclick="openEditMission(${index})">✎改結果</button>`;
                 resTr.innerHTML = `<td colspan="${GAME.playerCount + 3}" style="text-align:left; padding:8px 10px;">➔ 第 ${rec.round} 輪：${resBadge} ${editMissBtn}</td>`;
                 tbody.appendChild(resTr);
@@ -358,7 +358,7 @@ const utilsUpdateUI = () => {
             let lakeRec = GAME.lake.history.find(l => l.round === rec.round);
             if (lakeRec) {
                 let lr = document.createElement('tr');
-                lr.innerHTML = `<td colspan="${GAME.playerCount + 3}" style="text-align:left; padding-left:10px; font-size:13px; color:#555; background:#e8f4f8;">🧚 湖中仙女：${lakeRec.from}號 驗 ${lakeRec.to}號 ➔ ${lakeRec.res==='evil'?'<span style="color:#d9534f;font-weight:bold;">壞人</span>':'<span style="color:#0dad0d;font-weight:bold;">好人</span>'}</td>`;
+                lr.innerHTML = `<td colspan="${GAME.playerCount + 3}" style="text-align:left; padding-left:10px; font-size:13px; color:#555; background:#e8f4f8;">湖中仙女：${lakeRec.from}號 驗 ${lakeRec.to}號 ➔ ${lakeRec.res==='evil'?'<span style="color:#d9534f;font-weight:bold;">壞人</span>':'<span style="color:#0dad0d;font-weight:bold;">好人</span>'}</td>`;
                 tbody.appendChild(lr);
             }
         }
@@ -403,7 +403,7 @@ const renderTaggingGrid = () => {
 
 const openActionSheet = (mode = 'team') => {
     TEMP_VOTE.editIndex = -1; $('#action-sheet').classList.remove('minimized'); $('#action-sheet').classList.add('open');
-    $('#btn-minimize-sheet').innerText = '收合對照';
+    $('#btn-minimize-sheet').innerText = '收合';
     if (mode === 'team') {
         TEMP_VOTE.team = []; TEMP_VOTE.votes = {}; let req = calcReqTeamSize();
         $('#require-team-size').innerText = req; $('#sheet-title').innerText = `${GAME.currentRound}-${GAME.currentAttempt} 派車 (隊長: ${GAME.currentCaptain}號)`;
@@ -425,7 +425,7 @@ window.openEditSheet = (index) => {
     let rec = GAME.history[index];
     if (rec.votes === 'skipped') return alert('尾派不計票模式無法編輯單人選票。');
     TEMP_VOTE.editIndex = index; $('#action-sheet').classList.remove('minimized'); $('#action-sheet').classList.add('open');
-    $('#btn-minimize-sheet').innerText = '收合對照';
+    $('#btn-minimize-sheet').innerText = '收合';
     hide($('#step-team-build')); show($('#step-vote')); hide($('#btn-confirm-vote')); show($('#btn-save-edit')); hide($('#hammer-option'));
     $('#sheet-title').innerText = `編輯 ${rec.round}-${rec.attempt} 投票`; TEMP_VOTE.team = rec.team; TEMP_VOTE.votes = {...rec.votes};
     let grid = $('#vote-record-grid'); grid.innerHTML = '';
@@ -508,7 +508,7 @@ const openLakeModal = () => {
 // Init & Events
 // ==========================================
 window.onload = () => {
-    // 【修復 1：安全綁定字體縮放按鈕防呆】
+    // 1. 安全綁定字體縮放按鈕
     const fontScale = $('#font-size-scale');
     if (fontScale) {
         fontScale.onchange = (e) => { document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; };
@@ -538,11 +538,10 @@ window.onload = () => {
     $('#btn-restart').onclick = () => { 
         if(confirm('確定清除紀錄重新開始嗎？')) { 
             let keepTags = confirm('是否保留目前建立的自訂關鍵字 TAG？');
-            // 【修復 3：如果選保留，強制執行 saveTags 寫入 LocalStorage】
             if (keepTags) { 
                 saveTags(); 
             } else { 
-                localStorage.removeItem('avalonV8_tags'); 
+                localStorage.removeItem('avalon_tags'); 
             }
             clearState(); 
             location.reload(); 
@@ -554,7 +553,7 @@ window.onload = () => {
         const sheet = $('#action-sheet');
         if (sheet.classList.contains('minimized')) {
             sheet.classList.remove('minimized');
-            $('#btn-minimize-sheet').innerText = '收合對照';
+            $('#btn-minimize-sheet').innerText = '收合';
         } else {
             sheet.classList.add('minimized');
             $('#btn-minimize-sheet').innerText = '展開';
@@ -575,19 +574,22 @@ window.onload = () => {
     $('#btn-confirm-vote').onclick = () => logicCommitVote($('#skip-vote-cb') && $('#skip-vote-cb').checked);
     $('#btn-save-edit').onclick = () => logicCommitVote(false);
     $('#btn-confirm-mission').onclick = logicCommitMission;
-    $('#btn-force-lake').onclick = openLakeModal; $('#btn-use-lake').onclick = openLakeModal;
+    
+    // 【修復：加入防呆檢查，如果有這個按鈕才綁定事件，避免報錯中斷】
+    if ($('#btn-force-lake')) $('#btn-force-lake').onclick = openLakeModal; 
+    if ($('#btn-use-lake')) $('#btn-use-lake').onclick = openLakeModal;
     
     $('#btn-confirm-lake').onclick = () => {
         let target = parseInt($('#lake-target').value);
-        // 【修復 2：防呆，避免在 history 長度為 0 時點擊湖女確認導致報錯】
         let targetRound = GAME.history.length > 0 ? GAME.history[GAME.history.length-1].round : GAME.currentRound; 
         
         GAME.lake.history.push({ round: targetRound, from: GAME.lake.holder, to: target, res: $('#lake-result').value });
         GAME.lake.holder = target; GAME.pendingLake = false; saveState(GAME); utilsUpdateUI(); $('#lake-modal').classList.remove('active');
     };
 
+    
     let saved = loadState();
-    let savedTags = localStorage.getItem('avalonV8_tags');
+    let savedTags = localStorage.getItem('avalon_tags');
     if (savedTags) GAME.customTags = JSON.parse(savedTags);
 
     if (saved && saved.isPlaying) { 
@@ -597,7 +599,6 @@ window.onload = () => {
         updateMyRoleOptions(); hide($('#setup-view')); show($('#game-view')); utilsUpdateUI(); 
         
         if (GAME.pendingMissionIndex > -1) openMissionModal(GAME.pendingMissionIndex);
-        // 【修復 4：重整網頁時，如果湖女還沒驗，自動把湖女彈窗叫回來】
         if (GAME.pendingLake) openLakeModal();
         
     } else { 
