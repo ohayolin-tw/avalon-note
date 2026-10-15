@@ -39,8 +39,9 @@ let CURRENT_TAG_TARGET = -1;
 // Setup: 動態編輯角色與選項
 // ==========================================
 const initRoleEditor = (count) => {
-    $('#opt-oberon').disabled = count < 10;
-    if (count < 10) $('#opt-oberon').checked = false;
+    //奧伯倫10人以上才可以的話取消該備註
+    //$('#opt-oberon').disabled = count < 10;
+    //if (count < 10) $('#opt-oberon').checked = false;
     
     if (count >= 8) show($('#lake-setup-option'));
     else hide($('#lake-setup-option'));
@@ -49,7 +50,7 @@ const initRoleEditor = (count) => {
         let defaultRoles = count === 10 ? ['merlin','percival','loyal','loyal','loyal','loyal','morgana','assassin','oberon','mordred'] 
                          : count === 9 ? ['merlin','percival','loyal','loyal','loyal','loyal','morgana','assassin','mordred']
                          : count === 8 ? ['merlin','percival','loyal','loyal','loyal','morgana','assassin','minion']
-                         : count === 7 ? ['merlin','percival','loyal','loyal','morgana','assassin','oberon']
+                         : count === 7 ? ['merlin','percival','loyal','loyal','morgana','assassin','minion']
                          : count === 6 ? ['merlin','percival','loyal','loyal','morgana','assassin']
                          : ['merlin','percival','loyal','morgana','assassin'];
         
@@ -63,7 +64,7 @@ const initRoleEditor = (count) => {
 };
 
 const recalcFillers = (count) => {
-    TEMP_SETUP.options = { percival: $('#opt-percival').checked, morgana: $('#opt-morgana').checked, mordred: $('#opt-mordred').checked, oberon: $('#opt-oberon').checked && count === 10 };
+    TEMP_SETUP.options = { percival: $('#opt-percival').checked, morgana: $('#opt-morgana').checked, mordred: $('#opt-mordred').checked, oberon: $('#opt-oberon').checked };
     let fixedCount = 2; 
     let optCount = Object.values(TEMP_SETUP.options).filter(Boolean).length;
     let targetFillers = count - fixedCount - optCount;
@@ -119,7 +120,7 @@ const recalcGameState = () => {
     
     let sCount = 0; let fCount = 0;
     GAME.history.forEach(rec => {
-        if ((rec.passed || rec.votes === 'skipped') && rec.failVotes !== undefined) {
+        if ((rec.passed || rec.votes === 'skipped' || rec.attempt === 5) && rec.failVotes !== undefined) {
             let req = calcFailsNeeded(rec.round);
             if (rec.failVotes >= req) fCount++; else sCount++;
         }
@@ -128,14 +129,14 @@ const recalcGameState = () => {
     GAME.successCount = sCount; GAME.failCount = fCount;
     
     let lastRec = GAME.history[GAME.history.length - 1];
-    
-    if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes === undefined) {
+    let isVoteDone = lastRec.passed || lastRec.votes === 'skipped' || lastRec.attempt === 5;
+    if (isVoteDone && lastRec.failVotes === undefined) {
         GAME.currentRound = lastRec.round;
         GAME.currentAttempt = lastRec.attempt;
         GAME.currentCaptain = lastRec.captain;
         GAME.pendingMissionIndex = GAME.history.length - 1;
     }
-    else if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes !== undefined) {
+    else if (isVoteDone && lastRec.failVotes !== undefined) {
         GAME.currentRound = lastRec.round + 1; GAME.currentAttempt = 1;
         GAME.currentCaptain = (lastRec.captain % GAME.playerCount) + 1;
         GAME.pendingMissionIndex = -1;
@@ -156,7 +157,7 @@ const checkPendingLakeState = () => {
     GAME.pendingLake = false;
     if (!GAME.useLake || GAME.history.length === 0) return;
     let lastRec = GAME.history[GAME.history.length - 1];
-    if ((lastRec.passed || lastRec.votes === 'skipped') && [2, 3, 4].includes(lastRec.round) && lastRec.failVotes !== undefined) {
+    if ((lastRec.passed || lastRec.votes === 'skipped' || lastRec.attempt === 5) && [2, 3, 4].includes(lastRec.round) && lastRec.failVotes !== undefined) {
         let hasLaked = GAME.lake.history.some(h => h.round === lastRec.round);
         if (!hasLaked) GAME.pendingLake = true;
     }
@@ -205,12 +206,17 @@ window.cycleMarker = (type, seat) => {
     saveState(GAME); utilsUpdateUI();
 };
 
-window.cycleSuspectMark = (roundIdx, seat) => {
+window.toggleSuspect = (roundIdx, seat) => {
     let rec = GAME.history[roundIdx];
-    if (!rec.suspectMarks) rec.suspectMarks = {};
-    let curr = rec.suspectMarks[seat] || 0;
-    rec.suspectMarks[seat] = (curr + 1) % 3; // 0:無, 1:綠, 2:紅
-    saveState(GAME); utilsUpdateUI();
+    if (!rec.suspects) rec.suspects = [];
+    
+    if (rec.suspects.includes(seat)) {
+        rec.suspects = rec.suspects.filter(s => s !== seat); // 移除標記
+    } else {
+        rec.suspects.push(seat); // 加上標記
+    }
+    saveState(GAME); 
+    utilsUpdateUI(); // 重繪畫面
 };
 
 // ==========================================
@@ -314,7 +320,14 @@ const utilsUpdateUI = () => {
     tbody.innerHTML = '';
     GAME.history.forEach((rec, index) => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td>${rec.round}-${rec.attempt}</td><td>${rec.captain}</td>`;
+        
+        let infoTd1 = document.createElement('td');
+        infoTd1.innerText = `${rec.round}-${rec.attempt}`;
+        let infoTd2 = document.createElement('td');
+        infoTd2.innerText = rec.captain;
+        tr.appendChild(infoTd1);
+        tr.appendChild(infoTd2);
+
         for (let i = 1; i <= GAME.playerCount; i++) {
             let td = document.createElement('td');
             if (i === rec.captain) td.classList.add('captain');
@@ -322,29 +335,35 @@ const utilsUpdateUI = () => {
             let onTeam = rec.team.includes(i);
             if(onTeam) td.classList.add('on-team');
 
-            if (onTeam && rec.failVotes > 0) {
+            if (onTeam) {
                 td.classList.add('suspect-target');
-                td.onclick = () => cycleSuspectMark(index, i);
+                td.onclick = () => {
+                    window.toggleSuspect(index, i);
+                };
             }
             
-            if (rec.votes === 'skipped') td.innerHTML = onTeam ? '出發' : '-';
-            else {
+            let suspectHtml = (rec.suspects && rec.suspects.includes(i)) 
+                ? `<span class="private-info" style="font-size:0.85rem; margin-left:2px;">⚠️</span>` 
+                : '';
+            
+            if (rec.votes === 'skipped') {
+                td.innerHTML = (onTeam ? '出發' : '-') + suspectHtml;
+            } else {
                 let v = rec.votes[i];
                 let alert = ((onTeam && v === 'B') || (!onTeam && v === 'W')) ? `<span class="alert-mark">!</span>` : '';
                 let sym = v === 'W' ? `<span class="txt-w">⚪</span>` : `<span class="txt-b">⚫</span>`;
                 
-                let markVal = (rec.suspectMarks && rec.suspectMarks[i]) ? rec.suspectMarks[i] : 0;
-                let markIcon = markVal === 1 ? '🟢' : markVal === 2 ? '🟥' : '';
-                let markHtml = markIcon ? `<span style="font-size:0.8rem; margin-left:2px; vertical-align:middle;" class="private-info">${markIcon}</span>` : '';
-                
-                td.innerHTML = `${sym}${alert}${markHtml}`;
+                td.innerHTML = `${sym}${alert}${suspectHtml}`;
             }
             tr.appendChild(td);
         }
-        tr.innerHTML += `<td><button class="edit-btn" onclick="openEditSheet(${index})">✎修改票</button></td>`;
+        
+        let editTd = document.createElement('td');
+        editTd.innerHTML = `<button class="edit-btn" onclick="openEditSheet(${index})">✎修改票</button>`;
+        tr.appendChild(editTd);
+        
         tbody.appendChild(tr);
-
-        if (rec.passed || rec.votes === 'skipped') {
+        if (rec.passed || rec.votes === 'skipped'|| rec.attempt === 5) {
             if (rec.failVotes !== undefined) {
                 let resTr = document.createElement('tr');
                 let isFail = rec.failVotes >= calcFailsNeeded(rec.round);
@@ -386,19 +405,28 @@ const renderTaggingGrid = () => {
     let count = parseInt($('#player-count').value); GAME.mySeat = parseInt($('#my-seat').value); GAME.myRole = $('#my-role').value;
     GAME.perspective = $('#my-perspective').value; GAME.tags = {}; 
     let limit = logicGetTagLimits();
-    if (limit.count > 0) {
-        show($('#vision-setup')); $('#vision-hint').innerText = limit.hint;
+    
+    // 👇 改成這樣：只要視角是 player 就顯示提示框 (不管 count 是不是 0)
+    if (GAME.perspective === 'player') {
+        show($('#vision-setup')); 
+        $('#vision-hint').innerText = limit.hint; // 顯示提示字
         let grid = $('#vision-grid'); grid.innerHTML = '';
-        for (let i = 1; i <= count; i++) {
-            if (i === GAME.mySeat) continue;
-            let btn = document.createElement('div'); btn.className = 'player-circle'; btn.innerText = i;
-            btn.onclick = () => {
-                if (GAME.tags[i]) { delete GAME.tags[i]; btn.classList.remove('tag-active'); } 
-                else if (Object.keys(GAME.tags).length < limit.count) { GAME.tags[i] = 'target'; btn.classList.add('tag-active'); }
-            };
-            grid.appendChild(btn);
+        
+        // 有需要標記才生出玩家圓圈
+        if (limit.count > 0) {
+            for (let i = 1; i <= count; i++) {
+                if (i === GAME.mySeat) continue;
+                let btn = document.createElement('div'); btn.className = 'player-circle'; btn.innerText = i;
+                btn.onclick = () => {
+                    if (GAME.tags[i]) { delete GAME.tags[i]; btn.classList.remove('tag-active'); } 
+                    else if (Object.keys(GAME.tags).length < limit.count) { GAME.tags[i] = 'target'; btn.classList.add('tag-active'); }
+                };
+                grid.appendChild(btn);
+            }
         }
-    } else hide($('#vision-setup'));
+    } else {
+        hide($('#vision-setup'));
+    }
 };
 
 const openActionSheet = (mode = 'team') => {
@@ -449,6 +477,10 @@ const logicCommitVote = (skipVote = false) => {
     GAME.history.push(newRec);
 
     if (passed || GAME.currentAttempt === 5) {
+        if (!passed && !skipVote && GAME.currentAttempt === 5) {
+            alert('提示：第五次派票遭否決！\n(標準規則下壞人直接獲勝，但系統將強制進入下一輪任務)');
+        }
+        
         GAME.pendingMissionIndex = GAME.history.length - 1; 
         saveState(GAME); openMissionModal(GAME.pendingMissionIndex);
         $('#action-sheet').classList.remove('open', 'minimized');
@@ -485,7 +517,7 @@ const logicCommitMission = () => {
     let rec = GAME.history[idx];
     
     // 如果修改失敗張數，清空該輪的嫌疑標記
-    if (rec.failVotes !== undefined && rec.failVotes !== TEMP_FAIL_VOTES) { rec.suspectMarks = {}; }
+    if (rec.failVotes !== undefined && rec.failVotes !== TEMP_FAIL_VOTES) { rec.suspects = []; }
     rec.failVotes = TEMP_FAIL_VOTES;
     GAME.pendingMissionIndex = -1; EDITING_MISSION_INDEX = -1;
     
@@ -575,7 +607,7 @@ window.onload = () => {
     $('#btn-save-edit').onclick = () => logicCommitVote(false);
     $('#btn-confirm-mission').onclick = logicCommitMission;
     
-    // 【修復：加入防呆檢查，如果有這個按鈕才綁定事件，避免報錯中斷】
+    
     if ($('#btn-force-lake')) $('#btn-force-lake').onclick = openLakeModal; 
     if ($('#btn-use-lake')) $('#btn-use-lake').onclick = openLakeModal;
     

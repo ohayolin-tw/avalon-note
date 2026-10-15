@@ -62,7 +62,7 @@ table { width: 100%; border-collapse: collapse; text-align: center; white-space:
 th, td { padding: 10px 4px; border: 1px solid var(--border); min-width: 55px; font-size:0.95rem; position:relative; }
 th { background: #f8f9fa; position: sticky; top: 0; z-index: 10; line-height: 1.4; border-bottom: 2px solid #ccc;}
 td.captain { background-color: #d1ecf1; font-weight: bold; }
-td.on-team { border: 3px solid var(--team-border); background-color: var(--team-bg); } 
+td.on-team { border: 3px solid var(--team-border); } 
 td.suspect-target { cursor: pointer; } 
 
 /* 任務結果 Badge 化 */
