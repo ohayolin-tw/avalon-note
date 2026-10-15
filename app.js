@@ -129,20 +129,17 @@ const recalcGameState = () => {
     
     let lastRec = GAME.history[GAME.history.length - 1];
     
-    // 如果最後一筆是出發，但 failVotes 還是 undefined，代表還在出任務階段
     if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes === undefined) {
         GAME.currentRound = lastRec.round;
         GAME.currentAttempt = lastRec.attempt;
         GAME.currentCaptain = lastRec.captain;
         GAME.pendingMissionIndex = GAME.history.length - 1;
     }
-    // 如果最後一筆出發完畢且已有成績
     else if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes !== undefined) {
         GAME.currentRound = lastRec.round + 1; GAME.currentAttempt = 1;
         GAME.currentCaptain = (lastRec.captain % GAME.playerCount) + 1;
         GAME.pendingMissionIndex = -1;
     } 
-    // 如果最後一筆被否決
     else {
         GAME.currentRound = lastRec.round; GAME.currentAttempt = lastRec.attempt + 1;
         GAME.currentCaptain = (lastRec.captain % GAME.playerCount) + 1;
@@ -472,7 +469,7 @@ const openMissionModal = (idx) => {
     $('#mission-fail-buttons').innerHTML = btnHtml;
     
     TEMP_FAIL_VOTES = null; $('#btn-confirm-mission').disabled = true;
-    $('#mission-success-hint').innerText = ''; $('#mission-deduction-hint').innerText = '';  if (rec.failVotes !== undefined) { setTimeout(() => { $$('.num-btn')[rec.failVotes].click(); }, 50);
+    $('#mission-success-hint').innerText = ''; $('#mission-deduction-hint').innerText = ''; if (rec.failVotes !== undefined) { setTimeout(() => { $$('.num-btn')[rec.failVotes].click(); }, 50);
     }
     $('#mission-modal').classList.add('active'); };  window.selectFailVotes = (val, btnEl) => { $$('.num-btn').forEach(b => b.classList.remove('active')); btnEl.classList.add('active');
     TEMP_FAIL_VOTES = val; $('#btn-confirm-mission').disabled = false;
@@ -511,7 +508,12 @@ const openLakeModal = () => {
 // Init & Events
 // ==========================================
 window.onload = () => {
-    $('#font-size-scale').onchange = (e) => { document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; };
+    // 【修復 1：安全綁定字體縮放按鈕防呆】
+    const fontScale = $('#font-size-scale');
+    if (fontScale) {
+        fontScale.onchange = (e) => { document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; };
+    }
+    
     $('#btn-privacy').onclick = () => { GAME.privacy = !GAME.privacy; saveState(GAME); utilsUpdateUI(); };
     $('#player-count').onchange = (e) => { GAME.isEditedConfig = false; initRoleEditor(parseInt(e.target.value)); };
     $('#my-perspective').onchange = utilsRenderSetup;
@@ -536,7 +538,12 @@ window.onload = () => {
     $('#btn-restart').onclick = () => { 
         if(confirm('確定清除紀錄重新開始嗎？')) { 
             let keepTags = confirm('是否保留目前建立的自訂關鍵字 TAG？');
-            if (!keepTags) { localStorage.removeItem('avalonV8_tags'); }
+            // 【修復 3：如果選保留，強制執行 saveTags 寫入 LocalStorage】
+            if (keepTags) { 
+                saveTags(); 
+            } else { 
+                localStorage.removeItem('avalonV8_tags'); 
+            }
             clearState(); 
             location.reload(); 
         } 
@@ -572,24 +579,29 @@ window.onload = () => {
     
     $('#btn-confirm-lake').onclick = () => {
         let target = parseInt($('#lake-target').value);
-        let targetRound = GAME.history[GAME.history.length-1].round; 
+        // 【修復 2：防呆，避免在 history 長度為 0 時點擊湖女確認導致報錯】
+        let targetRound = GAME.history.length > 0 ? GAME.history[GAME.history.length-1].round : GAME.currentRound; 
+        
         GAME.lake.history.push({ round: targetRound, from: GAME.lake.holder, to: target, res: $('#lake-result').value });
         GAME.lake.holder = target; GAME.pendingLake = false; saveState(GAME); utilsUpdateUI(); $('#lake-modal').classList.remove('active');
     };
 
     let saved = loadState();
     let savedTags = localStorage.getItem('avalonV8_tags');
-    if (savedTags) GAME.customTags = JSON.parse(savedTags); // 全域載入 TAG
+    if (savedTags) GAME.customTags = JSON.parse(savedTags);
 
     if (saved && saved.isPlaying) { 
-        // 合併載入的 TAG 與目前的狀態
         saved.customTags = GAME.customTags;
         GAME = saved; 
         if (!GAME.playerTags) GAME.playerTags = {};
         updateMyRoleOptions(); hide($('#setup-view')); show($('#game-view')); utilsUpdateUI(); 
+        
         if (GAME.pendingMissionIndex > -1) openMissionModal(GAME.pendingMissionIndex);
+        // 【修復 4：重整網頁時，如果湖女還沒驗，自動把湖女彈窗叫回來】
+        if (GAME.pendingLake) openLakeModal();
+        
     } else { 
-        // 初始化免點擊：預設帶入10人局配置
+        if (fontScale) fontScale.value = "100";
         $('#player-count').value = "10";
         initRoleEditor(10); 
         utilsRenderSetup();
