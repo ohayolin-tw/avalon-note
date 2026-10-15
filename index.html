@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>阿瓦隆派票邏輯紀錄器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <h1>阿瓦隆紀錄器</h1>
+            <select id="font-size-scale" class="modern-select" style="padding: 4px; font-size: 12px; width: auto;">
+                <option value="100">字體 100%</option>
+                <option value="110">字體 110%</option>
+                <option value="120">字體 120%</option>
+                <option value="150">字體 150%</option>
+                <option value="200">字體 200%</option>
+            </select>
+        </div>
+        <div>
+            <button id="btn-privacy" class="danger-btn" style="background:#f39c12;">👁️ 隱藏機密</button>
+            <button id="btn-restart" class="danger-btn">重新開始</button>
+        </div>
+    </header>
+
+    <!-- 1. 設定畫面 -->
+    <section id="setup-view" class="view-section active">
+        <h2>遊戲設定</h2>
+        <p class="hint">切換人數會重置角色與標記設定</p>
+        
+        <div class="form-group">
+            <label>玩家人數：</label>
+            <select id="player-count" class="modern-select">
+                <option value="5">5人</option>
+                <option value="6">6人</option>
+                <option value="7">7人</option>
+                <option value="8">8人</option>
+                <option value="9">9人</option>
+                <option value="10" selected>10人</option>
+            </select>
+        </div>
+
+        <div id="lake-setup-option" class="form-group config-box hidden">
+            <label class="checkbox-label">
+                <input type="checkbox" id="opt-lake" checked> 
+                啟用湖中仙女 (第2, 3, 4輪任務結束後強制查驗)
+            </label>
+        </div>
+
+        <div class="form-group config-box">
+            <label id="role-config-title">本局角色配置：</label>
+            <div id="role-editor-fixed" style="margin-bottom: 5px;" class="checkbox-group">
+                <label><input type="checkbox" checked disabled> 梅林</label>
+                <label><input type="checkbox" checked disabled> 刺客</label>
+            </div>
+            <div id="role-editor-options" style="margin-bottom: 5px;" class="checkbox-group">
+                <label><input type="checkbox" id="opt-percival"> 派西維爾</label>
+                <label><input type="checkbox" id="opt-morgana"> 魔甘娜</label>
+                <label><input type="checkbox" id="opt-mordred"> 默德雷德</label>
+                <label><input type="checkbox" id="opt-oberon"> 奧伯倫</label>
+            </div>
+            <div style="margin-top: 10px; font-size: 13px; font-weight: bold;">
+                剩餘空位 (點擊切換 忠臣 / 爪牙)：
+            </div>
+            <div id="role-editor-fillers" class="role-tags" style="margin-top: 5px;"></div>
+            <div id="role-balance-hint" class="hint" style="margin-top: 10px;"></div>
+        </div>
+        
+        <div class="form-group">
+            <label>我的視角：</label>
+            <select id="my-perspective" class="modern-select">
+                <option value="recorder">純紀錄者</option>
+                <option value="god">上帝視角</option>
+                <option value="player">我是玩家</option>
+            </select>
+        </div>
+
+        <div id="player-setup" class="hidden config-box">
+            <div class="form-group">
+                <label>我的座位號碼：</label>
+                <select id="my-seat" class="modern-select"></select>
+            </div>
+            <div class="form-group">
+                <label>我的角色：</label>
+                <select id="my-role" class="modern-select"></select>
+            </div>
+        </div>
+
+        <div id="vision-setup" class="hidden config-box">
+            <label id="vision-title">請標記你看到的資訊：</label>
+            <div id="vision-grid" class="player-grid"></div>
+            <p id="vision-hint" class="hint"></p>
+        </div>
+
+        <div id="god-setup" class="hidden config-box">
+            <label>請分配角色給對應玩家 (依據上方配置)：</label>
+            <div id="god-grid"></div>
+        </div>
+
+        <button id="btn-start-game" class="primary-btn">鎖定配置，開始遊戲</button>
+    </section>
+
+    <!-- 2. 主遊戲畫面 -->
+    <section id="game-view" class="view-section hidden">
+        <div class="status-bar">
+            <span id="status-round">第 1 輪</span>
+            <span id="status-mission">任務需求: 3人</span>
+            <span id="status-score" class="score-board">好:0 | 壞:0</span>
+        </div>
+
+        <div id="assassin-phase-banner" class="hidden banner-danger">
+            <h3>⚠️ 刺殺階段 ⚠️</h3>
+            <p>好人已成功 3 次！請壞人討論並由刺客執行刺殺</p>
+        </div>
+
+        <div id="lake-pending-banner" class="hidden banner-warning">
+            <h3>🧚‍♀️ 等待湖中仙女查驗 🧚‍♀️</h3>
+            <p>請完成查驗紀錄後，才能繼續下一輪遊戲。</p>
+            <button id="btn-force-lake" class="primary-btn" style="margin-top:10px;">開啟湖女紀錄面板</button>
+        </div>
+
+        <div class="legend">
+            <span><code>⚪</code>車上白</span>
+            <span><code>⚫!</code>內黑</span>
+            <span><code>⚪!</code>外白</span>
+            <span><code>⚫</code>車下黑</span>
+            <span>🟦隊長</span>
+            <span style="border:2px solid #e67e22; background:#fef9e7; padding:0 3px;">黃底橘框:車上</span>
+            <span id="legend-fails-req" style="color:var(--danger); font-weight:bold;"></span>
+        </div>
+        <p class="hint private-info" style="text-align:center; margin-bottom:5px;">💡提示：點擊「失敗車次」的車上人員，可標記嫌疑犯 (🟢/🟥)</p>
+
+        <div class="table-container">
+            <table id="record-table">
+                <thead>
+                    <tr id="table-head-row"></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+
+        <div id="lake-section" class="hidden config-box private-info" style="margin-top:10px; margin-bottom: 80px;">
+            <h4>🧚‍♀️ 湖中仙女 (當前持有: <span id="lake-holder"></span>號)</h4>
+            <div id="lake-history"></div>
+        </div>
+
+        <button id="btn-open-action" class="floating-btn">派車 / 投票</button>
+    </section>
+
+    <!-- 3. 底部抽屜 (無動畫) -->
+    <div id="action-sheet" class="bottom-sheet">
+        <div class="sheet-header">
+            <h3 id="sheet-title">1-1 派車</h3>
+            <button id="btn-minimize-sheet" class="minimal-btn">收合對照</button>
+        </div>
+        <div class="sheet-content">
+            <div id="step-team-build">
+                <p>請選擇 <span id="require-team-size"></span> 名玩家：</p>
+                <div class="player-grid" id="team-select-grid"></div>
+                <button id="btn-confirm-team" class="primary-btn" disabled>確認名單，進入投票</button>
+            </div>
+
+            <div id="step-vote" class="hidden">
+                <p>請記錄黑白球 (預設車上白、車下黑)：</p>
+                <div class="player-grid" id="vote-record-grid"></div>
+                <div class="hammer-option hidden" id="hammer-option">
+                    <label class="checkbox-label"><input type="checkbox" id="skip-vote-cb"> 尾派不計票，直接出發</label>
+                </div>
+                <button id="btn-confirm-vote" class="primary-btn">結算投票</button>
+                <button id="btn-save-edit" class="edit-action-btn hidden">儲存投票編輯</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 任務結果彈窗 -->
+    <div id="mission-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="mission-modal-title">任務出發結果</h3>
+            <p id="mission-req-hint" style="margin-bottom:10px; font-weight:bold;"></p>
+            <div class="form-group">
+                <label>請選擇失敗票數：</label>
+                <div id="mission-fail-buttons" class="button-group"></div>
+            </div>
+            <p class="hint" id="mission-success-hint" style="color:var(--primary);"></p>
+            <p class="hint" id="mission-deduction-hint"></p>
+            <button id="btn-confirm-mission" class="primary-btn" disabled>確認任務結果</button>
+        </div>
+    </div>
+
+    <!-- 5. 湖中仙女彈窗 -->
+    <div id="lake-modal" class="modal">
+        <div class="modal-content">
+            <h3>紀錄湖中仙女</h3>
+            <div class="form-group">
+                <label>查驗對象 (排除曾持有人)：</label>
+                <select id="lake-target" class="modern-select"></select>
+            </div>
+            <div class="form-group">
+                <label>宣稱結果：</label>
+                <select id="lake-result" class="modern-select">
+                    <option value="good">好人</option>
+                    <option value="evil">壞人</option>
+                </select>
+            </div>
+            <button id="btn-confirm-lake" class="primary-btn">確認紀錄</button>
+        </div>
+    </div>
+
+    <!-- 6. 標籤(TAG)管理彈窗 -->
+    <div id="tag-modal" class="modal">
+        <div class="modal-content" style="text-align: left;">
+            <h3 id="tag-modal-title" style="margin-bottom:10px; text-align:center;">設定標籤</h3>
+            
+            <div style="display:flex; gap:5px; margin-bottom: 15px;">
+                <input type="text" id="new-tag-input" class="modern-select" placeholder="自訂新關鍵字..." style="flex:1; padding:8px;">
+                <button id="btn-add-new-tag" class="primary-btn" style="width:auto; padding:8px 12px;">新增</button>
+            </div>
+            
+            <div id="tag-pool-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 20px;"></div>
+            
+            <button id="btn-close-tag-modal" class="primary-btn">完成</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
