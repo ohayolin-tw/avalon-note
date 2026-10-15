@@ -1,14 +1,13 @@
 const $ = (selector) => document.querySelector(selector); const $$ = (selector) => document.querySelectorAll(selector);
 const hide = (el) => el && el.classList.add('hidden');
 const show = (el) => el && el.classList.remove('hidden');
+const saveState = (state) => localStorage.setItem('avalonV8', JSON.stringify(state));
+const loadState = () => JSON.parse(localStorage.getItem('avalonV8'));
+const clearState = () => localStorage.removeItem('avalonV8');
 
-// 更新為 v8 防衝突
-const saveState = (state) => localStorage.setItem('avalon_v8', JSON.stringify(state));
-const loadState = () => JSON.parse(localStorage.getItem('avalon_v8'));
-const clearState = () => localStorage.removeItem('avalon_v8');
-const saveTags = () => localStorage.setItem('avalon_v8_tags', JSON.stringify(GAME.customTags));
-
+// TAG 專用持久化函數
 const DEFAULT_TAGS = ['鐵好', '鐵壞', '滑水', '帶風向', '被發好人', '被發查殺'];
+const saveTags = () => localStorage.setItem('avalonV8_tags', JSON.stringify(GAME.customTags));
 
 const RULE_BOOK = {
     5:  { evil: 2, missions: [2, 3, 2, 3, 3] },
@@ -110,7 +109,7 @@ const updateMyRoleOptions = () => {
 };
 
 // ==========================================
-// 狀態重新運算 (防重整保護)
+// 狀態重新運算 (支援防重整與修改)
 // ==========================================
 const recalcGameState = () => {
     if (GAME.history.length === 0) {
@@ -129,15 +128,25 @@ const recalcGameState = () => {
     GAME.successCount = sCount; GAME.failCount = fCount;
     
     let lastRec = GAME.history[GAME.history.length - 1];
-    if ((lastRec.passed || lastRec.votes === 'skipped')) {
-        // 如果任務還沒開出成敗結果 (重整狀態)，不要進入下一輪
-        if (lastRec.failVotes !== undefined) {
-            GAME.currentRound = lastRec.round + 1; GAME.currentAttempt = 1;
-            GAME.currentCaptain = (lastRec.captain % GAME.playerCount) + 1;
-        }
-    } else {
+    
+    // 如果最後一筆是出發，但 failVotes 還是 undefined，代表還在出任務階段
+    if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes === undefined) {
+        GAME.currentRound = lastRec.round;
+        GAME.currentAttempt = lastRec.attempt;
+        GAME.currentCaptain = lastRec.captain;
+        GAME.pendingMissionIndex = GAME.history.length - 1;
+    }
+    // 如果最後一筆出發完畢且已有成績
+    else if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes !== undefined) {
+        GAME.currentRound = lastRec.round + 1; GAME.currentAttempt = 1;
+        GAME.currentCaptain = (lastRec.captain % GAME.playerCount) + 1;
+        GAME.pendingMissionIndex = -1;
+    } 
+    // 如果最後一筆被否決
+    else {
         GAME.currentRound = lastRec.round; GAME.currentAttempt = lastRec.attempt + 1;
         GAME.currentCaptain = (lastRec.captain % GAME.playerCount) + 1;
+        GAME.pendingMissionIndex = -1;
     }
     
     if (GAME.successCount >= 3) GAME.status = 'assassin';
@@ -150,7 +159,7 @@ const checkPendingLakeState = () => {
     GAME.pendingLake = false;
     if (!GAME.useLake || GAME.history.length === 0) return;
     let lastRec = GAME.history[GAME.history.length - 1];
-    if ((lastRec.passed || lastRec.votes === 'skipped') && lastRec.failVotes !== undefined && [2, 3, 4].includes(lastRec.round)) {
+    if ((lastRec.passed || lastRec.votes === 'skipped') && [2, 3, 4].includes(lastRec.round) && lastRec.failVotes !== undefined) {
         let hasLaked = GAME.lake.history.some(h => h.round === lastRec.round);
         if (!hasLaked) GAME.pendingLake = true;
     }
@@ -243,12 +252,14 @@ $('#btn-add-new-tag').onclick = () => {
     if (val && !GAME.customTags.includes(val)) {
         GAME.customTags.push(val);
         $('#new-tag-input').value = '';
-        saveTags(); // 即時寫入 localstorage
-        saveState(GAME); renderTagPool();
+        saveTags(); // 全域保留
+        renderTagPool();
     }
 };
 
-$('#btn-close-tag-modal').onclick = () => { $('#tag-modal').classList.remove('active'); };
+$('#btn-close-tag-modal').onclick = () => {
+    $('#tag-modal').classList.remove('active');
+};
 
 // ==========================================
 // UI 渲染與核心操作
@@ -284,11 +295,12 @@ const utilsUpdateUI = () => {
         let badge = logicGetVisionBadge(i);
         let lakeChecked = GAME.lake.history.find(h => h.to === i);
         let lakeBadgeHtml = lakeChecked ? `<div style="font-size:0.75rem; font-weight:bold; color:${lakeChecked.res === 'evil'?'#d9534f':'#0dad0d'};">🧚${lakeChecked.res === 'evil'?'壞':'好'}</div>` : '';
+        
         let m1 = icons[GAME.tableMarks1[i] || 0]; let m2 = icons[GAME.tableMarks2[i] || 0];
         let pTags = GAME.playerTags[i] || [];
         let tagsHtml = pTags.length > 0 ? `<div class="player-tag-container">` + pTags.map(t => `<div class="player-tag">${t}</div>`).join('') + `</div>` : '';
 
-        headRow.innerHTML += `<th style="vertical-align:top; min-width:65px;">
+        headRow.innerHTML += `<th style="vertical-align:top; min-width:60px;">
             ${i}號<br>${badge} ${lakeBadgeHtml}
             <div class="marker-group private-info">
                 <div class="marker-btn" onclick="cycleMarker(1, ${i})">${m1}</div>
@@ -324,10 +336,10 @@ const utilsUpdateUI = () => {
                 let alert = ((onTeam && v === 'B') || (!onTeam && v === 'W')) ? `<span class="alert-mark">!</span>` : '';
                 let sym = v === 'W' ? `<span class="txt-w">⚪</span>` : `<span class="txt-b">⚫</span>`;
                 
-                // 緊貼的標記
                 let markVal = (rec.suspectMarks && rec.suspectMarks[i]) ? rec.suspectMarks[i] : 0;
                 let markIcon = markVal === 1 ? '🟢' : markVal === 2 ? '🟥' : '';
                 let markHtml = markIcon ? `<span style="font-size:0.8rem; margin-left:2px; vertical-align:middle;" class="private-info">${markIcon}</span>` : '';
+                
                 td.innerHTML = `${sym}${alert}${markHtml}`;
             }
             tr.appendChild(td);
@@ -345,6 +357,7 @@ const utilsUpdateUI = () => {
                 resTr.innerHTML = `<td colspan="${GAME.playerCount + 3}" style="text-align:left; padding:8px 10px;">➔ 第 ${rec.round} 輪：${resBadge} ${editMissBtn}</td>`;
                 tbody.appendChild(resTr);
             }
+
             let lakeRec = GAME.lake.history.find(l => l.round === rec.round);
             if (lakeRec) {
                 let lr = document.createElement('tr');
@@ -523,9 +536,8 @@ window.onload = () => {
     $('#btn-restart').onclick = () => { 
         if(confirm('確定清除紀錄重新開始嗎？')) { 
             let keepTags = confirm('是否保留目前建立的自訂關鍵字 TAG？');
-            let savedTags = keepTags ? GAME.customTags : [...DEFAULT_TAGS];
+            if (!keepTags) { localStorage.removeItem('avalonV8_tags'); }
             clearState(); 
-            localStorage.setItem('avalon_v8_tags', JSON.stringify(savedTags));
             location.reload(); 
         } 
     };
@@ -562,25 +574,23 @@ window.onload = () => {
         let target = parseInt($('#lake-target').value);
         let targetRound = GAME.history[GAME.history.length-1].round; 
         GAME.lake.history.push({ round: targetRound, from: GAME.lake.holder, to: target, res: $('#lake-result').value });
-        GAME.lake.holder = target; GAME.pendingLake = false; recalcGameState(); saveState(GAME); utilsUpdateUI(); $('#lake-modal').classList.remove('active');
+        GAME.lake.holder = target; GAME.pendingLake = false; saveState(GAME); utilsUpdateUI(); $('#lake-modal').classList.remove('active');
     };
 
     let saved = loadState();
-    let savedTags = localStorage.getItem('avalon_v8_tags');
-    
-    // 初始化免點擊預設帶出
-    $('#player-count').value = "10";
-    if (savedTags) GAME.customTags = JSON.parse(savedTags);
+    let savedTags = localStorage.getItem('avalonV8_tags');
+    if (savedTags) GAME.customTags = JSON.parse(savedTags); // 全域載入 TAG
 
     if (saved && saved.isPlaying) { 
+        // 合併載入的 TAG 與目前的狀態
+        saved.customTags = GAME.customTags;
         GAME = saved; 
-        if (!GAME.customTags) GAME.customTags = savedTags ? JSON.parse(savedTags) : [...DEFAULT_TAGS];
         if (!GAME.playerTags) GAME.playerTags = {};
         updateMyRoleOptions(); hide($('#setup-view')); show($('#game-view')); utilsUpdateUI(); 
-        
-        // 防重整機制：如果在任務結算時按了 F5，重新開起任務結算視窗
         if (GAME.pendingMissionIndex > -1) openMissionModal(GAME.pendingMissionIndex);
     } else { 
+        // 初始化免點擊：預設帶入10人局配置
+        $('#player-count').value = "10";
         initRoleEditor(10); 
         utilsRenderSetup();
     }
