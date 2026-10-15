@@ -653,6 +653,95 @@ window.onload = () => {
     };
 
     
+    // --- 匯出圖片功能 ---
+    $('#btn-export-img').onclick = () => {
+        // 預填日期
+        let today = new Date();
+        $('#export-date').value = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()} 第1場`;
+        $('#export-title').value = "阿瓦隆遊戲紀錄";
+        $('#export-modal').classList.add('active');
+    };
+
+    $('#btn-cancel-export').onclick = () => {
+        $('#export-modal').classList.remove('active');
+    };
+
+    $('#btn-confirm-export').onclick = async () => {
+        const title = $('#export-title').value.trim() || '阿瓦隆遊戲紀錄';
+        const date = $('#export-date').value.trim();
+
+        // 建立一個暫時的隱藏容器來排版要輸出的畫面
+        const exportArea = document.createElement('div');
+        exportArea.style.padding = '20px';
+        exportArea.style.background = '#f4f6f8';
+        exportArea.style.color = '#333';
+        exportArea.style.width = '800px'; // 固定寬度確保圖片不會因為手機螢幕太窄而擠壓
+        
+        // 加入標題、日期與目前比分
+        exportArea.innerHTML = `
+            <div style="text-align:center; margin-bottom:15px;">
+                <h2 style="font-size: 26px; margin:0 0 5px 0;">${title}</h2>
+                <p style="font-size: 16px; color:#555; margin:0;">${date}</p>
+                <p style="font-size: 16px; color:#555; margin:5px 0 0 0; font-weight:bold;">
+                    (共 ${GAME.playerCount} 人局 | 好人 ${GAME.successCount} : 壞人 ${GAME.failCount})
+                </p>
+            </div>
+        `;
+
+        // 複製表格區域
+        const tableClone = $('.table-container').cloneNode(true);
+        
+        // 【優化出圖畫面 1】拔除所有的編輯按鈕 ("✎修改票", "✎改結果")
+        tableClone.querySelectorAll('.edit-btn').forEach(btn => btn.remove());
+        
+        // 【優化出圖畫面 2】精準移除最後一欄 (操作欄)
+        // 針對每一列 (tr) 檢查，如果最後一個儲存格沒有 colspan 屬性，才把它刪除 (這樣就能保留任務結果與湖女)
+        tableClone.querySelectorAll('tr').forEach(row => {
+            const lastCell = row.lastElementChild;
+            if (lastCell && !lastCell.hasAttribute('colspan')) {
+                lastCell.remove();
+            }
+        });
+
+        // 將表格的寬度撐開
+        tableClone.style.overflowX = 'visible'; 
+        
+        exportArea.appendChild(tableClone);
+        
+        // 將暫時容器放到畫面外
+        exportArea.style.position = 'absolute';
+        exportArea.style.left = '-9999px';
+        document.body.appendChild(exportArea);
+
+        try {
+            // 按鈕顯示處理中防呆
+            const btn = $('#btn-confirm-export');
+            const oldText = btn.innerText;
+            btn.innerText = '圖片產生中...';
+            btn.disabled = true;
+            
+            // 透過 html2canvas 繪製
+            const canvas = await html2canvas(exportArea, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            
+            // 下載機制
+            const link = document.createElement('a');
+            link.download = `${title}_${date.replace(/\//g, '-')}.png`;
+            link.href = imgData;
+            link.click();
+            
+            // 恢復狀態
+            btn.innerText = oldText;
+            btn.disabled = false;
+            $('#export-modal').classList.remove('active');
+        } catch(e) {
+            alert('匯出圖片失敗，請確保有網路連線以載入繪圖套件！');
+            console.error(e);
+        } finally {
+            document.body.removeChild(exportArea);
+        }
+    };
+
     let saved = loadState();
     let savedTags = localStorage.getItem('avalon_tags');
     if (savedTags) GAME.customTags = JSON.parse(savedTags);

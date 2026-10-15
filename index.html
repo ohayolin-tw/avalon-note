@@ -9,7 +9,8 @@
 
     <!-- 2. iOS 專屬：允許加入主畫面、設定狀態列顏色、設定 App 名稱 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <meta name="apple-mobile-web-app-title" content="阿瓦隆紀錄">
     <link rel="apple-touch-icon" href="icon.png"> <!-- 建議日後補上一張 192x192 的 icon 圖片 -->
 
@@ -30,6 +31,7 @@
             </select>
         </div>
         <div class="header-right">
+            <button id="btn-export-img" class="danger-btn" style="background:#3498db;">儲存圖片</button>
             <button id="btn-privacy" class="danger-btn warning-bg">隱藏機密</button>
             <button id="btn-restart" class="danger-btn">重新開始</button>
         </div>
@@ -235,6 +237,21 @@
             </div>
             
             <button id="btn-close-tag-modal" class="primary-btn">完成</button>
+        </div>
+    </div>
+    <div id="export-modal" class="modal">
+        <div class="modal-content text-left">
+            <h3 class="mb-10 text-center">儲存遊戲紀錄</h3>
+            <div class="form-group">
+                <label>遊戲標題：</label>
+                <input type="text" id="export-title" class="modern-select" placeholder="例如：週末阿瓦隆歡樂局">
+            </div>
+            <div class="form-group">
+                <label>日期與場次：</label>
+                <input type="text" id="export-date" class="modern-select" placeholder="例如：2023/10/20 第1場">
+            </div>
+            <button id="btn-confirm-export" class="primary-btn mt-10">產生並下載圖片</button>
+            <button id="btn-cancel-export" class="minimal-btn mt-10" style="width:100%; border:none; margin-top:8px;">取消</button>
         </div>
     </div>
 
