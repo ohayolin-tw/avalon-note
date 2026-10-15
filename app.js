@@ -722,13 +722,34 @@ window.onload = () => {
             
             // 透過 html2canvas 繪製
             const canvas = await html2canvas(exportArea, { scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
-            
-            // 下載機制
-            const link = document.createElement('a');
-            link.download = `${title}_${date.replace(/\//g, '-')}.png`;
-            link.href = imgData;
-            link.click();
+            const filename = `${title}_${date.replace(/\//g, '-')}.png`;
+
+            // 判斷是否為「加到主畫面」的捷徑模式 (PWA 獨立模式)
+            // 包含通用的 display-mode 偵測，以及 iOS 專屬的 navigator.standalone 偵測
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+            // 將 canvas 轉成 Blob (檔案格式) 準備給分享或下載使用
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const file = new File([blob], filename, { type: 'image/png' });
+
+            // 只有在「捷徑模式」且「支援原生分享」時，才跳出 iOS 分享面板
+            if (isStandalone && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: title
+                    });
+                } catch (err) {
+                    console.log('玩家取消了分享或儲存', err);
+                }
+            } else {
+                // 一般瀏覽器模式 (Safari, Chrome, 電腦版)，直接觸發圖片下載
+                const imgData = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = imgData;
+                link.click();
+            }
             
             // 恢復狀態
             btn.innerText = oldText;
@@ -738,7 +759,7 @@ window.onload = () => {
             alert('匯出圖片失敗，請確保有網路連線以載入繪圖套件！');
             console.error(e);
         } finally {
-            document.body.removeChild(exportArea);
+            document.body.removeChild(exportArea); // 清理隱藏的排版容器
         }
     };
 
