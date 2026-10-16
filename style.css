@@ -3,8 +3,8 @@
    ========================================================= */
 :root { --bg-color: #f4f6f8; --primary: #0dad0d; --danger: #d9534f; --text: #333; --white: #fff; --border: #ccc; --team-border: #e67e22; --team-bg: #fef9e7; --edit-color: #8e44ad; --radius: 8px; --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05); --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.1); --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2); }
 * { box-sizing: border-box; font-family: "微軟正黑體", -apple-system, sans-serif; margin: 0; padding: 0; }
-html, body { height: 100dvh; width: 100%; overflow-x: hidden; }
-body { background-color: var(--bg-color); color: var(--text); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+html, body { width: 100%; overflow-x: hidden; }
+body { background-color: var(--bg-color); color: var(--text); -webkit-overflow-scrolling: touch; }
 h1, h2, h3, h4 { font-size: 1.1rem; }
 body.privacy-mode .private-info { display: none !important; opacity: 0 !important; visibility: hidden !important; }
 
@@ -136,8 +136,10 @@ body.sheet-active .floating-btn { opacity: 0; pointer-events: none; transform: t
 .modal.active .modal-content { transform: scale(1); }
 
 .table-container.sticky-enabled { max-height: calc(100dvh - 280px); overflow-y: auto; }
-.table-container.sticky-enabled th { position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4); }
+.table-container.sticky-enabled th { box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4); }
 .hide-attempts-mode .attempt-row { display: none !important; }
 .stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .stats-table th, .stats-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
 .stats-table th { background: #f4f6f8; }
+
+.table-macro-container { display: grid; width: 100%; margin-bottom: 20px; } .table-container { grid-area: 1 / 1; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-md); margin-bottom: 0; } .sticky-header-container { grid-area: 1 / 1; position: sticky; top: env(safe-area-inset-top); z-index: 20; overflow-x: auto; align-self: start; scrollbar-width: none; background: #f8f9fa; border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-bottom: 2px solid #ccc; pointer-events: auto; } .sticky-header-container::-webkit-scrollbar { display: none; } table { width: max-content; border-collapse: separate; border-spacing: 0; text-align: center; white-space: nowrap; }

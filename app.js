@@ -369,6 +369,7 @@ const utilsUpdateUI = () => {
     });
     
     headRow.innerHTML += `<th style="vertical-align:top">操作</th>`;
+    $('#sticky-head-row').innerHTML = headRow.innerHTML;
     tbody.innerHTML = '';
     
     GAME.history.forEach((rec, index) => {
@@ -450,6 +451,29 @@ const utilsUpdateUI = () => {
             }
         }
     });
+
+    setTimeout(() => {
+            const mainThs = document.querySelectorAll('#table-head-row th');
+            const stickyThs = document.querySelectorAll('#sticky-head-row th');
+            
+            mainThs.forEach((th, idx) => {
+                if (stickyThs[idx]) {
+                    // 獲取真實寬度 (含 padding)
+                    const realWidth = th.getBoundingClientRect().width;
+                    // 強制套用至懸浮表頭
+                    stickyThs[idx].style.minWidth = `${realWidth}px`;
+                    stickyThs[idx].style.width = `${realWidth}px`;
+                    stickyThs[idx].style.maxWidth = `${realWidth}px`;
+                }
+            });
+            
+            // 同步整個 Table 的總寬度，避免外框線對不齊
+            const mainTable = document.getElementById('record-table');
+            const stickyTable = document.getElementById('sticky-table');
+            if (mainTable && stickyTable) {
+                stickyTable.style.width = `${mainTable.getBoundingClientRect().width}px`;
+            }
+        }, 0);
 };
 
 const utilsRenderSetup = () => {
@@ -722,13 +746,34 @@ window.onload = () => {
         };
     }
 
-    // 凍結標題切換
+    // === 凍結表格標題功能 (CSS 懸浮同步) ===
     if ($('#opt-sticky')) {
         const toggleSticky = (checked) => {
-            checked ? $('.table-container').classList.add('sticky-enabled') : $('.table-container').classList.remove('sticky-enabled');
+            checked ? $('#sticky-header-container').classList.remove('hidden') : $('#sticky-header-container').classList.add('hidden');
         };
         toggleSticky($('#opt-sticky').checked);
         $('#opt-sticky').onchange = (e) => toggleSticky(e.target.checked);
+    }
+
+    // X 軸滑動雙向完美同步 (加入 requestAnimationFrame 防震)
+    const mainScroll = $('#main-table-container');
+    const stickyScroll = $('#sticky-header-container');
+    if (mainScroll && stickyScroll) {
+        let isSyncing = false;
+        mainScroll.addEventListener('scroll', (e) => {
+            if (!isSyncing) {
+                isSyncing = true;
+                stickyScroll.scrollLeft = e.target.scrollLeft;
+                requestAnimationFrame(() => isSyncing = false);
+            }
+        });
+        stickyScroll.addEventListener('scroll', (e) => {
+            if (!isSyncing) {
+                isSyncing = true;
+                mainScroll.scrollLeft = e.target.scrollLeft;
+                requestAnimationFrame(() => isSyncing = false);
+            }
+        });
     }
 
     // 防雷統計面板邏輯

@@ -159,13 +159,25 @@
             <span id="legend-fails-req" class="text-danger fw-bold"></span>
         </div>
 
-        <div class="table-container">
-            <table id="record-table">
-                <thead>
-                    <tr id="table-head-row"></tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
+        <div class="table-macro-container" id="table-macro-container">
+            <!-- 懸浮用表頭 (與真實表格 X 軸同步) -->
+            <div id="sticky-header-container" class="sticky-header-container hidden">
+                <table id="sticky-table">
+                    <thead>
+                        <tr id="sticky-head-row"></tr>
+                    </thead>
+                </table>
+            </div>
+            
+            <!-- 真實表格 (負責提供高度與橫向滾動) -->
+            <div class="table-container" id="main-table-container">
+                <table id="record-table">
+                    <thead>
+                        <tr id="table-head-row"></tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="lake-section" class="hidden config-box private-info lake-box">
