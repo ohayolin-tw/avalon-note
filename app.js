@@ -227,6 +227,17 @@ window.toggleSuspect = (roundIdx, seat) => {
     utilsUpdateUI(); // 重繪畫面
 };
 
+window.toggleColumn = (seat) => {
+    if (!GAME.hiddenColumns) GAME.hiddenColumns = [];
+    if (GAME.hiddenColumns.includes(seat)) {
+        GAME.hiddenColumns = GAME.hiddenColumns.filter(s => s !== seat);
+    } else {
+        GAME.hiddenColumns.push(seat);
+    }
+    saveState(GAME);
+    utilsUpdateUI();
+};
+
 // ==========================================
 // TAG 系統
 // ==========================================
@@ -310,18 +321,42 @@ const utilsUpdateUI = () => {
 
     const headRow = $('#table-head-row'); const tbody = $('#table-body');
     let icons = ['-', '🟢', '🟥'];
-    headRow.innerHTML = '<th style="vertical-align:top; min-width:40px;">編號</th><th style="vertical-align:top; min-width:40px;">隊長</th>';
+    
+    // === 計算隱藏玩家與顯示順序 ===
+    if (!GAME.hiddenColumns) GAME.hiddenColumns = [];
+    let visibleOrder = [], hiddenOrder = [];
     for (let i = 1; i <= GAME.playerCount; i++) {
+        GAME.hiddenColumns.includes(i) ? hiddenOrder.push(i) : visibleOrder.push(i);
+    }
+    // 正常的排前面，隱藏的推到最後面
+    let renderOrder = [...visibleOrder, ...hiddenOrder];
+
+    headRow.innerHTML = '<th style="vertical-align:top; min-width:40px;">編號</th><th style="vertical-align:top; min-width:40px;">隊長</th>';
+    
+    // 依據新順序渲染表頭
+    renderOrder.forEach(i => {
+        let isHidden = GAME.hiddenColumns.includes(i);
+        
+        if (isHidden) {
+            headRow.innerHTML += `<th style="vertical-align:middle; min-width:25px; padding:2px; background:#e0e0e0; cursor:pointer;" onclick="toggleColumn(${i})" title="點擊展開">
+                <div style="font-size:13px; font-weight:bold; color:#777;">${i}</div>
+            </th>`;
+            return;
+        }
+
         let badge = logicGetVisionBadge(i);
         let lakeChecked = GAME.lake.history.find(h => h.to === i);
         let lakeBadgeHtml = lakeChecked ? `<div style="font-size:0.75rem; font-weight:bold; color:${lakeChecked.res === 'evil'?'#d9534f':'#0dad0d'};">${lakeChecked.res === 'evil'?'壞':'好'}</div>` : '';
-        
         let m1 = icons[GAME.tableMarks1[i] || 0]; let m2 = icons[GAME.tableMarks2[i] || 0];
         let pTags = GAME.playerTags[i] || [];
         let tagsHtml = pTags.length > 0 ? `<div class="player-tag-container">` + pTags.map(t => `<div class="player-tag">${t}</div>`).join('') + `</div>` : '';
 
         headRow.innerHTML += `<th style="vertical-align:top; min-width:60px;">
-            ${i}號<br>${badge} ${lakeBadgeHtml}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <span>${i}號</span>
+                <span style="cursor:pointer; font-size:12px; opacity:0.6;" onclick="toggleColumn(${i})" title="隱藏此玩家">👁️</span>
+            </div>
+            ${badge} ${lakeBadgeHtml}
             <div class="marker-group private-info">
                 <div class="marker-btn" onclick="cycleMarker(1, ${i})">${m1}</div>
                 <div class="marker-btn" onclick="cycleMarker(2, ${i})">${m2}</div>
@@ -331,12 +366,16 @@ const utilsUpdateUI = () => {
                 <div class="tag-add-btn" onclick="openTagModal(${i})">[+TAG]</div>
             </div>
         </th>`;
-    }
+    });
+    
     headRow.innerHTML += `<th style="vertical-align:top">操作</th>`;
-
     tbody.innerHTML = '';
+    
     GAME.history.forEach((rec, index) => {
         let tr = document.createElement('tr');
+        
+        let isDispatched = rec.passed || rec.votes === 'skipped' || rec.attempt === 5;
+        if (!isDispatched) tr.classList.add('attempt-row');
         
         let infoTd1 = document.createElement('td');
         infoTd1.innerText = `${rec.round}-${rec.attempt}`;
@@ -348,8 +387,18 @@ const utilsUpdateUI = () => {
         const isLastRow = (index === GAME.history.length - 1);
         const hasMission = (rec.failVotes !== undefined);
 
-        for (let i = 1; i <= GAME.playerCount; i++) {
+        // 依據新順序渲染表身欄位
+        renderOrder.forEach(i => {
+            let isHidden = GAME.hiddenColumns.includes(i);
             let td = document.createElement('td');
+            
+            if (isHidden) {
+                td.style.background = '#f0f0f0';
+                td.innerHTML = '';
+                tr.appendChild(td);
+                return; 
+            }
+
             if (i === rec.captain) td.classList.add('captain');
             
             let onTeam = rec.team.includes(i);
@@ -376,10 +425,10 @@ const utilsUpdateUI = () => {
                 td.innerHTML = `${sym}${alert}${suspectHtml}`;
             }
             tr.appendChild(td);
-        }
+        });
         
         let editTd = document.createElement('td');
-        // 【關鍵防呆】只有是最後一筆紀錄，且還沒填寫任務結果時，才允許修改派車票！
+        // 【關鍵防呆】只有是最後一筆紀錄，才允許修改派車票！
         if (isLastRow) {
             editTd.innerHTML = `<button class="edit-btn" onclick="openEditSheet(${index})">✎修改票</button>`;
         }
@@ -582,6 +631,71 @@ const openLakeModal = () => {
     $('#lake-target').innerHTML = opts; $('#lake-modal').classList.add('active');
 };
 
+const generateStats = () => {
+    let stats = {};
+    for (let i = 1; i <= GAME.playerCount; i++) {
+        stats[i] = { onTeam: 0, failMissions: 0, outerWhite: 0, innerBlack: 0 };
+    }
+    
+    GAME.history.forEach(rec => {
+        let isDispatched = rec.passed || rec.votes === 'skipped' || rec.attempt === 5;
+        let isMissionFailed = rec.failVotes !== undefined && rec.failVotes >= calcFailsNeeded(rec.round);
+
+        // 1. 統計上車與參與壞車次數
+        rec.team.forEach(p => {
+            if (isDispatched && rec.failVotes !== undefined) {
+                stats[p].onTeam++;
+                if (isMissionFailed) stats[p].failMissions++;
+            }
+        });
+
+        // 2. 統計內黑與外白 (跳過尾派不計票的情況)
+        if (rec.votes !== 'skipped') {
+            for (let i = 1; i <= GAME.playerCount; i++) {
+                let onTeam = rec.team.includes(i);
+                let vote = rec.votes[i];
+                
+                if (onTeam && vote === 'B') stats[i].innerBlack++;
+                if (!onTeam && vote === 'W') stats[i].outerWhite++;
+            }
+        }
+    });
+
+    // 3. 渲染至畫面
+    let html = `<table class="stats-table" style="font-size:13px;">
+        <tr>
+            <th width="45">玩家</th>
+            <th>上車 <span style="color:red; font-size:10px;">(黑車)</span></th>
+            <th><span class="txt-w">⚪外白</span></th>
+            <th><span class="txt-b">⚫內黑</span></th>
+        </tr>`;
+        
+    for (let i = 1; i <= GAME.playerCount; i++) {
+        let s = stats[i];
+        let roleName = (GAME.perspective === 'god' && GAME.godRoles[i]) ? `<br><span style="font-size:10px;color:red;">${ROLE_NAMES[GAME.godRoles[i]]}</span>` : '';
+        
+        // 特徵凸顯：若外白或內黑次數過高，加粗並上色提醒
+        let owStyle = s.outerWhite >= 2 ? `style="color:var(--primary); font-weight:bold; font-size:16px;"` : ``;
+        let ibStyle = s.innerBlack >= 1 ? `style="color:var(--danger); font-weight:bold; font-size:16px;"` : ``;
+
+        html += `<tr>
+            <td><b>${i}號</b>${roleName}</td>
+            <td>${s.onTeam} <span style="color:#d9534f;font-weight:bold;">(${s.failMissions})</span></td>
+            <td ${owStyle}>${s.outerWhite}</td>
+            <td ${ibStyle}>${s.innerBlack}</td>
+        </tr>`;
+    }
+    
+    html += `</table>
+    <div class="hint text-left mt-10 fs-sm" style="line-height:1.5;">
+        <b>💡 戰術特徵解析：</b><br>
+        • <b>外白 (車外投白)：</b> 可能為梅林/派西暗示，或壞人想送隊友上車。<br>
+        • <b>內黑 (車上投黑)：</b> 極度異常，通常為好人抗議車上有壞人，或壞人故意做作。
+    </div>`;
+    
+    $('#stats-content').innerHTML = html;
+};
+
 // ==========================================
 // Init & Events
 // ==========================================
@@ -592,12 +706,39 @@ window.onload = () => {
         fontScale.onchange = (e) => { document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; };
     }
     
+    // 未上車可以標記驚嘆號
     if ($('#opt-any-suspect')) {
         $('#opt-any-suspect').checked = GAME.allowAnySuspect || false;
         $('#opt-any-suspect').onchange = (e) => {
             GAME.allowAnySuspect = e.target.checked;
             saveState(GAME);
             utilsUpdateUI(); // 勾選或取消時，即時重繪畫面
+        };
+    }
+    // 僅顯示發車紀錄切換
+    if ($('#opt-hide-attempts')) {
+        $('#opt-hide-attempts').onchange = (e) => {
+            e.target.checked ? $('#record-table').classList.add('hide-attempts-mode') : $('#record-table').classList.remove('hide-attempts-mode');
+        };
+    }
+
+    // 凍結標題切換
+    if ($('#opt-sticky')) {
+        const toggleSticky = (checked) => {
+            checked ? $('.table-container').classList.add('sticky-enabled') : $('.table-container').classList.remove('sticky-enabled');
+        };
+        toggleSticky($('#opt-sticky').checked);
+        $('#opt-sticky').onchange = (e) => toggleSticky(e.target.checked);
+    }
+
+    // 防雷統計面板邏輯
+    if ($('#btn-stats')) {
+        $('#btn-stats').onclick = () => $('#stats-warning-modal').classList.add('active');
+        $('#btn-cancel-stats').onclick = () => $('#stats-warning-modal').classList.remove('active');
+        $('#btn-confirm-stats').onclick = () => {
+            $('#stats-warning-modal').classList.remove('active');
+            generateStats();
+            $('#stats-display-modal').classList.add('active');
         };
     }
 
@@ -816,6 +957,7 @@ window.onload = () => {
         initRoleEditor(10); 
         utilsRenderSetup();
     }
+
 
     const textInputs = document.querySelectorAll('input[type="text"]');
     textInputs.forEach(input => {

@@ -88,7 +88,7 @@ button:active { transform: scale(0.97); }
 table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: center; white-space: nowrap; }
 th, td { padding: 10px 4px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 55px; font-size: 0.95rem; position: relative; }
 th:last-child, td:last-child { border-right: none; }
-th { background: #f8f9fa; position: sticky; top: 0; z-index: 10; line-height: 1.4; border-bottom: 2px solid #ccc; font-size: 15px !important; }
+th { background: #f8f9fa; line-height: 1.4; border-bottom: 2px solid #ccc; font-size: 15px !important; }
 td.captain { background-color: #d1ecf1; font-weight: bold; }
 td.on-team { border: 3px solid var(--team-border); background: var(--team-bg); }
 td.suspect-target { cursor: pointer; }
@@ -134,3 +134,10 @@ body.sheet-active .floating-btn { opacity: 0; pointer-events: none; transform: t
 .modal.active { display: flex; opacity: 1; }
 .modal-content { background: white; padding: 25px; border-radius: 12px; width: 92%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg); transform: scale(0.95); transition: transform 0.2s ease; }
 .modal.active .modal-content { transform: scale(1); }
+
+.table-container.sticky-enabled { max-height: calc(100dvh - 280px); overflow-y: auto; }
+.table-container.sticky-enabled th { position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4); }
+.hide-attempts-mode .attempt-row { display: none !important; }
+.stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.stats-table th, .stats-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+.stats-table th { background: #f4f6f8; }

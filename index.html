@@ -32,9 +32,12 @@
         </div>
         <div class="header-right">
             <button id="btn-export-img" class="danger-btn" style="background:#3498db;">儲存圖片</button>
+            <button id="btn-stats" class="danger-btn warning-bg">戰況統計</button>
             <button id="btn-privacy" class="danger-btn warning-bg">隱藏機密</button>
             <button id="btn-restart" class="danger-btn">重新開始</button>
+            
         </div>
+        
     </header>
 
     <!-- 1. 設定畫面 -->
@@ -121,6 +124,18 @@
 
     <!-- 2. 主遊戲畫面 -->
     <section id="game-view" class="view-section hidden">
+        <div class="text-center mb-10">
+            <label class="checkbox-label" style="display:inline-flex; font-size:13px; font-weight:bold; background:#fff; padding:6px 12px; border-radius:8px; border:1px solid #ccc;">
+                <input type="checkbox" id="opt-any-suspect"> 允許標記「不在車上」的玩家標記 ⚠️
+            </label>
+            <label class="checkbox-label" style="display:inline-flex; font-size:13px; font-weight:bold; background:#fff; padding:6px 12px; border-radius:8px; border:1px solid #ccc;">
+                <input type="checkbox" id="opt-hide-attempts"> 僅顯示發車紀錄
+            </label>
+            <label class="checkbox-label" style="display:inline-flex; font-size:13px; font-weight:bold; background:#fff; padding:6px 12px; border-radius:8px; border:1px solid #ccc;">
+                <input type="checkbox" id="opt-sticky" checked> 凍結表格標題
+            </label>
+        </div>
+
         <div class="status-bar">
             <span id="status-round">第 1 輪</span>
             <span id="status-mission">任務需求: 3人</span>
@@ -142,12 +157,6 @@
             <span>🟦隊長</span>
             <span class="legend-team-mark">橘框:車上</span>
             <span id="legend-fails-req" class="text-danger fw-bold"></span>
-        </div>
-
-        <div class="text-center mb-10">
-            <label class="checkbox-label" style="display:inline-flex; font-size:13px; font-weight:bold; background:#fff; padding:6px 12px; border-radius:8px; border:1px solid #ccc;">
-                <input type="checkbox" id="opt-any-suspect"> 允許標記「不在車上」的玩家標記 ⚠️
-            </label>
         </div>
 
         <div class="table-container">
@@ -258,6 +267,23 @@
             <button id="btn-cancel-export" class="minimal-btn mt-10" style="width:100%; border:none; margin-top:8px;">取消</button>
         </div>
     </div>
+    <div id="stats-warning-modal" class="modal">
+            <div class="modal-content">
+                <h3 class="mb-10 text-danger">⚠️ 警告：機密數據</h3>
+                <p class="mb-15 fs-sm" style="color:#555;">若遊戲尚未結束，查看可能影響您的判斷或破壞遊戲體驗。</p>
+                <p class="mb-15 fw-bold">確定要查閱嗎？</p>
+                <button id="btn-cancel-stats" class="primary-btn mb-10" style="background:#aaa;">我再想想 (返回)</button>
+                <button id="btn-confirm-stats" class="danger-btn" style="width:100%; padding:12px;">確認查閱</button>
+            </div>
+        </div>
+
+        <div id="stats-display-modal" class="modal">
+            <div class="modal-content" style="max-width:90%; width:500px;">
+                <h3 class="mb-10">戰況統計</h3>
+                <div id="stats-content" style="max-height:60vh; overflow-y:auto; text-align:left; font-size:14px;"></div>
+                <button class="primary-btn mt-15" onclick="document.getElementById('stats-display-modal').classList.remove('active')">關閉統計</button>
+            </div>
+        </div>
 
     <script src="app.js"></script>
 </body>
