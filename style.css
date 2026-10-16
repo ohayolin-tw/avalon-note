@@ -60,7 +60,8 @@ button:active { transform: scale(0.97); }
 .status-bar span { white-space: nowrap; }
 .legend { font-size: 0.8rem; background: #e8f4f8; padding: 10px; border-radius: var(--radius); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .legend-team-mark { border: 2px solid var(--team-border); background: var(--team-bg); padding: 2px 4px; border-radius: 4px; }
-.banner-danger, .banner-endgame { background: #ffcccc; border: 2px solid red; padding: 15px; text-align: center; border-radius: var(--radius); margin-bottom: 15px; }
+.banner-over { padding: 15px; text-align: center; border-radius: var(--radius); margin-bottom: 15px; font-weight: bold; border: 2px solid transparent; }
+.banner-over.evil { background: #ffcccc; border-color: red; color: darkred; } .banner-over.good { background: #d1ecf1; border-color: #17a2b8; color: #0c5460; }
 .banner-warning { background: #fff3cd; border: 2px solid #ffeeba; padding: 15px; text-align: center; border-radius: var(--radius); margin-bottom: 15px; }
 
 /* =========================================================

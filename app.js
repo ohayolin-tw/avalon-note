@@ -147,10 +147,9 @@ const recalcGameState = () => {
         GAME.pendingMissionIndex = -1;
     }
     
-    if (GAME.successCount >= 3) GAME.status = 'assassin';
-    else GAME.status = 'playing';
-    if (GAME.failCount >= 3) GAME.status = 'endgame';
-    else GAME.status = 'playing';
+    if (GAME.successCount >= 3) { GAME.status = 'assassin'; }
+    else if (GAME.failCount >= 3) { GAME.status = 'endgame'; }
+    else { GAME.status = 'playing'; }
 
     checkPendingLakeState();
 };
@@ -278,20 +277,22 @@ const utilsUpdateUI = () => {
     $('#status-score').innerText = `任務進度：好人:${GAME.successCount} | 壞人:${GAME.failCount}`;
     $('#legend-fails-req').innerText = GAME.playerCount >= 7 ? `(第4輪需2失敗才失敗)` : '';
 
-    GAME.status === 'assassin' ? show($('#assassin-phase-banner')) : hide($('#assassin-phase-banner'));
-    GAME.status === 'endgame' ? show($('#endgame-phase-banner')) : hide($('#endgame-phase-banner'));
-    
-    if (GAME.pendingLake) {
-        show($('#lake-pending-banner')); hide($('#btn-open-action'));
+    let overBanner = $('#game-over-banner');
+    if (GAME.status === 'assassin') {
+        show(overBanner); overBanner.className = 'banner-over good'; overBanner.innerHTML = '<h3>🗡️ 刺殺階段</h3><p>好人已成功 3 次！請壞人討論並由刺客執行刺殺</p>';
+    } else if (GAME.status === 'endgame') {
+        show(overBanner); overBanner.className = 'banner-over evil'; overBanner.innerHTML = '<h3>☠️ 遊戲結束</h3><p>壞人已成功 3 次！壞人獲勝</p>';
     } else {
-        hide($('#lake-pending-banner'));
-        GAME.status === 'assassin' ? hide($('#btn-open-action')) : show($('#btn-open-action'));
+        hide(overBanner);
     }
+
+    // 控制湖中仙女與底部的派車按鈕
     if (GAME.pendingLake) {
         show($('#lake-pending-banner')); hide($('#btn-open-action'));
     } else {
         hide($('#lake-pending-banner'));
-        GAME.status === 'endgame' ? hide($('#btn-open-action')) : show($('#btn-open-action'));
+        // 只有在 playing 狀態下，才顯示派車按鈕
+        GAME.status === 'playing' ? show($('#btn-open-action')) : hide($('#btn-open-action'));
     }
 
     if (GAME.useLake && GAME.playerCount >= 8) {
