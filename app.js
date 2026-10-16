@@ -27,7 +27,8 @@ let GAME = {
     useLake: true, lake: { holder: 0, history: [] },
     status: 'playing', tableMarks1: {}, tableMarks2: {}, isEditedConfig: false, privacy: false,
     pendingMissionIndex: -1, pendingLake: false,
-    customTags: [...DEFAULT_TAGS], playerTags: {}
+    customTags: [...DEFAULT_TAGS], playerTags: {},
+    allowAnySuspect: false
 };
 let TEMP_VOTE = { team: [], votes: {}, editIndex: -1 };
 let TEMP_SETUP = { options: {}, fillers: [] };
@@ -338,6 +339,9 @@ const utilsUpdateUI = () => {
         tr.appendChild(infoTd1);
         tr.appendChild(infoTd2);
 
+        const isLastRow = (index === GAME.history.length - 1);
+        const hasMission = (rec.failVotes !== undefined);
+
         for (let i = 1; i <= GAME.playerCount; i++) {
             let td = document.createElement('td');
             if (i === rec.captain) td.classList.add('captain');
@@ -345,16 +349,17 @@ const utilsUpdateUI = () => {
             let onTeam = rec.team.includes(i);
             if(onTeam) td.classList.add('on-team');
 
-            if (onTeam) {
+            // 驚嘆號權限判斷：在車上，或者有勾選允許標記任何人
+            let canMark = onTeam || GAME.allowAnySuspect;
+            if (canMark) {
                 td.classList.add('suspect-target');
-                td.onclick = () => {
-                    window.toggleSuspect(index, i);
-                };
+                td.onclick = () => { window.toggleSuspect(index, i); };
             }
             
-            let suspectHtml = (rec.suspects && rec.suspects.includes(i)) 
-                ? `<span class="private-info" style="font-size:0.85rem; margin-left:2px;">⚠️</span>` 
-                : '';
+            // 判斷是否要顯示驚嘆號：有紀錄標記，且當前有權限顯示
+            let hasSuspect = rec.suspects && rec.suspects.includes(i);
+            let showSuspect = hasSuspect && canMark;
+            let suspectHtml = showSuspect ? `<span class="private-info" style="font-size:0.85rem; margin-left:2px;">⚠️</span>` : '';
             
             if (rec.votes === 'skipped') {
                 td.innerHTML = (onTeam ? '出發' : '-') + suspectHtml;
@@ -362,14 +367,16 @@ const utilsUpdateUI = () => {
                 let v = rec.votes[i];
                 let alert = ((onTeam && v === 'B') || (!onTeam && v === 'W')) ? `<span class="alert-mark">!</span>` : '';
                 let sym = v === 'W' ? `<span class="txt-w">⚪</span>` : `<span class="txt-b">⚫</span>`;
-                
                 td.innerHTML = `${sym}${alert}${suspectHtml}`;
             }
             tr.appendChild(td);
         }
         
         let editTd = document.createElement('td');
-        editTd.innerHTML = `<button class="edit-btn" onclick="openEditSheet(${index})">✎修改票</button>`;
+        // 【關鍵防呆】只有是最後一筆紀錄，且還沒填寫任務結果時，才允許修改派車票！
+        if (isLastRow) {
+            editTd.innerHTML = `<button class="edit-btn" onclick="openEditSheet(${index})">✎修改票</button>`;
+        }
         tr.appendChild(editTd);
         
         tbody.appendChild(tr);
@@ -379,16 +386,12 @@ const utilsUpdateUI = () => {
                 let isFail = rec.failVotes >= calcFailsNeeded(rec.round);
                 resTr.className = isFail ? 'fail-row' : 'success-row';
                 let resBadge = isFail ? `<span class="badge-result badge-fail">🔴 任務失敗 (${rec.failVotes}黑)</span>` : `<span class="badge-result badge-success">🟢 任務成功</span>`;
-                let editMissBtn = `<button class="edit-btn" style="margin-left:10px;" onclick="openEditMission(${index})">✎改結果</button>`;
+                
+                // 【關鍵防呆】只有是最後一筆紀錄，才允許修改任務結果！
+                let editMissBtn = isLastRow ? `<button class="edit-btn" style="margin-left:10px;" onclick="openEditMission(${index})">✎改結果</button>` : '';
+                
                 resTr.innerHTML = `<td colspan="${GAME.playerCount + 3}" style="text-align:left; padding:8px 10px;">➔ 第 ${rec.round} 輪：${resBadge} ${editMissBtn}</td>`;
                 tbody.appendChild(resTr);
-            }
-
-            let lakeRec = GAME.lake.history.find(l => l.round === rec.round);
-            if (lakeRec) {
-                let lr = document.createElement('tr');
-                lr.innerHTML = `<td colspan="${GAME.playerCount + 3}" style="text-align:left; padding-left:10px; font-size:13px; color:#555; background:#e8f4f8;">湖中仙女：${lakeRec.from}號 驗 ${lakeRec.to}號 ➔ ${lakeRec.res==='evil'?'<span style="color:#d9534f;font-weight:bold;">壞人</span>':'<span style="color:#0dad0d;font-weight:bold;">好人</span>'}</td>`;
-                tbody.appendChild(lr);
             }
         }
     });
@@ -494,8 +497,15 @@ const logicCommitVote = (skipVote = false) => {
     
     // 如果是編輯模式
     if (TEMP_VOTE.editIndex > -1) {
-        GAME.history[TEMP_VOTE.editIndex].votes = skipVote ? 'skipped' : { ...TEMP_VOTE.votes };
-        GAME.history[TEMP_VOTE.editIndex].passed = passed;
+        let rec = GAME.history[TEMP_VOTE.editIndex];
+        rec.votes = skipVote ? 'skipped' : { ...TEMP_VOTE.votes };
+        rec.passed = passed;
+        
+        let isDispatched = passed || skipVote || rec.attempt === 5;
+        if (!isDispatched) {
+            delete rec.failVotes; 
+        }
+
         recalcGameState(); saveState(GAME); utilsUpdateUI(); 
         closeActionSheet(); // 關閉面板並顯示浮動按鈕
         return;
@@ -576,6 +586,15 @@ window.onload = () => {
         fontScale.onchange = (e) => { document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; };
     }
     
+    if ($('#opt-any-suspect')) {
+        $('#opt-any-suspect').checked = GAME.allowAnySuspect || false;
+        $('#opt-any-suspect').onchange = (e) => {
+            GAME.allowAnySuspect = e.target.checked;
+            saveState(GAME);
+            utilsUpdateUI(); // 勾選或取消時，即時重繪畫面
+        };
+    }
+
     $('#btn-privacy').onclick = () => { GAME.privacy = !GAME.privacy; saveState(GAME); utilsUpdateUI(); };
     $('#player-count').onchange = (e) => { GAME.isEditedConfig = false; initRoleEditor(parseInt(e.target.value)); };
     $('#my-perspective').onchange = utilsRenderSetup;
