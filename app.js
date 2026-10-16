@@ -43,7 +43,12 @@ const initRoleEditor = (count) => {
     //奧伯倫10人以上才可以的話取消該備註
     //$('#opt-oberon').disabled = count < 10;
     //if (count < 10) $('#opt-oberon').checked = false;
-    
+    // 更新首派隊長選單
+    let fcSelect = $('#first-captain');
+    let fcVal = fcSelect.value;
+    fcSelect.innerHTML = Array.from({length: count}, (_, i) => `<option value="${i+1}">${i+1}號</option>`).join('');
+    if (fcVal && fcVal <= count) fcSelect.value = fcVal; else fcSelect.value = 1;
+
     if (count >= 8) show($('#lake-setup-option'));
     else hide($('#lake-setup-option'));
 
@@ -115,7 +120,8 @@ const updateMyRoleOptions = () => {
 // ==========================================
 const recalcGameState = () => {
     if (GAME.history.length === 0) {
-        GAME.currentRound = 1; GAME.currentAttempt = 1; GAME.currentCaptain = 1; 
+        GAME.currentRound = 1; GAME.currentAttempt = 1; 
+        GAME.currentCaptain = GAME.firstCaptain || 1; 
         GAME.successCount = 0; GAME.failCount = 0; GAME.status = 'playing'; return;
     }
     
@@ -604,6 +610,11 @@ window.onload = () => {
     $('#btn-start-game').onclick = () => {
         GAME.playerCount = parseInt($('#player-count').value); GAME.perspective = $('#my-perspective').value;
         GAME.useLake = GAME.playerCount >= 8 && $('#opt-lake').checked;
+        
+        // 【新增設定首派與防呆】
+        GAME.firstCaptain = parseInt($('#first-captain').value);
+        GAME.currentCaptain = GAME.firstCaptain;
+
         if (GAME.perspective === 'god') {
             let assigned = [], counts = {}, roleCounts = {};
             for(let i=1; i<=GAME.playerCount; i++) { let v = $(`#god-role-${i}`).value; if(v) assigned.push(v); }
@@ -612,7 +623,10 @@ window.onload = () => {
             if(!valid) return alert('角色分配與配置不符！');
             assigned.forEach((v, i) => GAME.godRoles[i+1] = v);
         }
-        if(GAME.useLake) GAME.lake.holder = GAME.playerCount; 
+        if(GAME.useLake) {
+            GAME.lake.holder = GAME.firstCaptain === 1 ? GAME.playerCount : GAME.firstCaptain - 1;
+        }
+        
         GAME.isPlaying = true; saveState(GAME); hide($('#setup-view')); show($('#game-view')); utilsUpdateUI();
     };
 
