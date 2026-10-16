@@ -782,4 +782,14 @@ window.onload = () => {
         initRoleEditor(10); 
         utilsRenderSetup();
     }
+
+    const textInputs = document.querySelectorAll('input[type="text"]');
+    textInputs.forEach(input => {
+        input.addEventListener('blur', () => {
+            // 延遲 100 毫秒等 iOS 鍵盤完全收起後，強制刷新視圖高度
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+            }, 100);
+        });
+    });
 };
