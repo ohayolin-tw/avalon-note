@@ -795,19 +795,11 @@ window.onload = () => {
     }
 
     // === 凍結表格標題功能 (CSS 懸浮同步) ===
-    // 動態計算 main-header 高度，並處理視窗改變時的表頭對齊
-    const updateHeaderHeight = () => {
-        const header = document.querySelector('.main-header');
-        if (header) {
-            document.documentElement.style.setProperty('--header-height', `${header.getBoundingClientRect().height}px`);
-        }
-        // 手機轉向或視窗縮放時，順便重新對齊表格寬度
+    window.addEventListener('resize', () => {
         if (typeof window.syncStickyHeader === 'function') {
             window.syncStickyHeader();
         }
-    };
-    window.addEventListener('resize', updateHeaderHeight);
-    updateHeaderHeight(); //
+    });
 
     if ($('#opt-sticky')) {
         const toggleSticky = (checked) => {

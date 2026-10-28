@@ -23,7 +23,7 @@ body.privacy-mode .private-info { display: none !important; opacity: 0 !importan
 /* =========================================================
    3. 頂部導覽列 (Header)
    ========================================================= */
-.main-header { display: flex; justify-content: space-between; align-items: center; padding: max(15px, env(safe-area-inset-top)) 15px 15px 15px; background: #2c3e50; color: var(--white); position: sticky; top: 0; z-index: 100; }
+.main-header { display: flex; justify-content: space-between; align-items: center; padding: max(15px, env(safe-area-inset-top)) 15px 15px 15px; background: #2c3e50; color: var(--white); }
 .main-header h1 { font-size: 18px !important; margin: 0; }
 .main-header select, .main-header button { font-size: 14px !important; }
 .header-left, .header-right { display: flex; align-items: center; gap: 10px; }
@@ -149,7 +149,7 @@ body.sheet-active .floating-btn { opacity: 0; pointer-events: none; transform: t
 .table-macro-container { display: grid; width: 100%; margin-bottom: 20px; align-items: start; } 
 
 /* 新增：外層 Wrapper 負責 Sticky，避開瀏覽器 overflow 衝突 */
-.sticky-header-wrapper { grid-area: 1 / 1; position: sticky; top: var(--header-height, 60px); z-index: 20; width: 100%; pointer-events: none; }
+.sticky-header-wrapper { grid-area: 1 / 1; position: sticky; top: env(safe-area-inset-top); z-index: 20; width: 100%; pointer-events: none; }
 
 /* 內層 Container 負責橫向滾動，並恢復滑鼠點擊 (pointer-events: auto) */
 .sticky-header-container { width: 100%; overflow-x: auto; scrollbar-width: none; pointer-events: auto; background: #f8f9fa; border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-bottom: 2px solid #ccc; }
