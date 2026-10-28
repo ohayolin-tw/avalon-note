@@ -3,7 +3,7 @@
    ========================================================= */
 :root { --bg-color: #f4f6f8; --primary: #0dad0d; --danger: #d9534f; --text: #333; --white: #fff; --border: #ccc; --team-border: #e67e22; --team-bg: #fef9e7; --edit-color: #8e44ad; --radius: 8px; --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05); --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.1); --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.2); }
 * { box-sizing: border-box; font-family: "微軟正黑體", -apple-system, sans-serif; margin: 0; padding: 0; }
-html, body { width: 100%; overflow-x: hidden; }
+html, body { width: 100%; overflow-x: clip; scrollbar-gutter: stable; }
 body { background-color: var(--bg-color); color: var(--text); -webkit-overflow-scrolling: touch; }
 h1, h2, h3, h4 { font-size: 1.1rem; }
 body.privacy-mode .private-info { display: none !important; opacity: 0 !important; visibility: hidden !important; }
@@ -23,7 +23,7 @@ body.privacy-mode .private-info { display: none !important; opacity: 0 !importan
 /* =========================================================
    3. 頂部導覽列 (Header)
    ========================================================= */
-.main-header { display: flex; justify-content: space-between; align-items: center; padding: max(15px, env(safe-area-inset-top)) 15px 15px 15px; background: #2c3e50; color: var(--white); }
+.main-header { display: flex; justify-content: space-between; align-items: center; padding: max(15px, env(safe-area-inset-top)) 15px 15px 15px; background: #2c3e50; color: var(--white); position: sticky; top: 0; z-index: 100; }
 .main-header h1 { font-size: 18px !important; margin: 0; }
 .main-header select, .main-header button { font-size: 14px !important; }
 .header-left, .header-right { display: flex; align-items: center; gap: 10px; }
@@ -78,7 +78,7 @@ button:active { transform: scale(0.97); }
 .player-circle.vote-black { background-color: #333; color: white; border: 4px solid var(--danger); }
 .player-circle.tag-active { background-color: #ff7675; color: white; border-color: red; }
 .button-group { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
-.num-btn { width: 50px; height: 50px; border-radius: var(--radius); border: 2px solid var(--border); font-size: 1.3rem; background: #f8f9fa; cursor: pointer; color: var(--text); transition: all 0.2s; }
+.num-btn { width: 50px; height: 50px; border-radius: var(--radius); border: 2px solid var(--border); font-size: 22px; background: #f8f9fa; cursor: pointer; color: var(--text); transition: all 0.2s; }
 .num-btn.active { background: var(--danger); color: white; border-color: darkred; font-weight: bold; transform: scale(1.05); box-shadow: 0 4px 8px rgba(217,83,79,0.3); }
 
 /* =========================================================
@@ -115,7 +115,7 @@ tr.fail-row td { background-color: #fff5f5; border-bottom: 2px solid #dc3545; }
 .tag-chip { padding: 6px 12px; background: #eee; border-radius: 15px; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--border); user-select: none; transition: all 0.2s; }
 .tag-chip.active { background: #3498db; color: white; border-color: #2980b9; }
 .marker-group { display: flex; justify-content: center; gap: 6px; margin-top: 6px; }
-.marker-btn { background: var(--white); border: 1px solid #aaa; border-radius: 4px; font-size: 0.8rem; width: 24px; height: 24px; line-height: 22px; text-align: center; cursor: pointer; user-select: none; box-shadow: var(--shadow-sm); }
+.marker-btn { background: var(--white); border: 1px solid #aaa; border-radius: 4px; font-size: 20px; width: 30px; height: 30px; line-height: 22px; text-align: center; cursor: pointer; user-select: none; box-shadow: var(--shadow-sm); }
 .vision-badge-td { display: inline-block; background: #2d3436; color: white; border-radius: 4px; padding: 3px 6px; margin-bottom: 4px; }
 
 /* =========================================================
@@ -135,11 +135,26 @@ body.sheet-active .floating-btn { opacity: 0; pointer-events: none; transform: t
 .modal-content { background: white; padding: 25px; border-radius: 12px; width: 92%; max-width: 400px; text-align: center; box-shadow: var(--shadow-lg); transform: scale(0.95); transition: transform 0.2s ease; }
 .modal.active .modal-content { transform: scale(1); }
 
-.table-container.sticky-enabled { max-height: calc(100dvh - 280px); overflow-y: auto; }
+/* =========================================================
+   11. 表格凍結與同步佈局 (Table Sticky Controls)
+   ========================================================= */
+.table-container.sticky-enabled #table-head-row { visibility: hidden; }
 .table-container.sticky-enabled th { box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4); }
 .hide-attempts-mode .attempt-row { display: none !important; }
 .stats-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 .stats-table th, .stats-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
 .stats-table th { background: #f4f6f8; }
 
-.table-macro-container { display: grid; width: 100%; margin-bottom: 20px; } .table-container { grid-area: 1 / 1; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-md); margin-bottom: 0; } .sticky-header-container { grid-area: 1 / 1; position: sticky; top: env(safe-area-inset-top); z-index: 20; overflow-x: auto; align-self: start; scrollbar-width: none; background: #f8f9fa; border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-bottom: 2px solid #ccc; pointer-events: auto; } .sticky-header-container::-webkit-scrollbar { display: none; } table { width: max-content; border-collapse: separate; border-spacing: 0; text-align: center; white-space: nowrap; }
+/* 佈局容器：加上 align-items: start; 防止高度被拉伸，給予滑動空間 */
+.table-macro-container { display: grid; width: 100%; margin-bottom: 20px; align-items: start; } 
+
+/* 新增：外層 Wrapper 負責 Sticky，避開瀏覽器 overflow 衝突 */
+.sticky-header-wrapper { grid-area: 1 / 1; position: sticky; top: var(--header-height, 60px); z-index: 20; width: 100%; pointer-events: none; }
+
+/* 內層 Container 負責橫向滾動，並恢復滑鼠點擊 (pointer-events: auto) */
+.sticky-header-container { width: 100%; overflow-x: auto; scrollbar-width: none; pointer-events: auto; background: #f8f9fa; border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-bottom: 2px solid #ccc; }
+.sticky-header-container::-webkit-scrollbar { display: none; }
+.sticky-header-container th, .sticky-header-container td { padding: 10px 4px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 0.95rem; position: relative; }
+
+/* 主表格容器 */
+.table-container { grid-area: 1 / 1; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-md); margin-bottom: 0; }

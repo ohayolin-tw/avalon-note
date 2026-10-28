@@ -286,6 +286,72 @@ $('#btn-close-tag-modal').onclick = () => {
 // ==========================================
 // UI 渲染與核心操作
 // ==========================================
+window.syncStickyHeader = () => {
+    const mainTable = document.getElementById('record-table');
+    const mainContainer = document.getElementById('main-table-container');
+    const stickyContainer = document.getElementById('sticky-header-container');
+    
+    if (!mainTable || !mainContainer || !stickyContainer) return;
+
+    const isHiddenMode = mainTable.classList.contains('hide-attempts-mode');
+    if (isHiddenMode) mainTable.classList.remove('hide-attempts-mode');
+    const scrollbarWidth = mainContainer.offsetWidth - mainContainer.clientWidth;
+    
+    // 利用透明右邊框補償這個差異，讓懸浮容器的「可用滑動空間 (clientWidth)」跟主容器完全一致！
+    stickyContainer.style.boxSizing = 'border-box';
+    stickyContainer.style.borderRight = `${scrollbarWidth}px solid transparent`;
+    // ==========================================
+
+    const mainThs = document.querySelectorAll('#table-head-row th');
+    const stickyThs = document.querySelectorAll('#sticky-head-row th');
+    let maxHeight = 0;
+
+    // 2. 解除主表頭寬度限制，讓瀏覽器自然排版
+    mainThs.forEach(th => {
+        th.style.minWidth = '';
+        th.style.width = '';
+        th.style.maxWidth = '';
+    });
+
+    // 3. 雙向精準鎖死每一欄的寬度
+    mainThs.forEach((th, idx) => {
+        if (stickyThs[idx]) {
+            // 取得真實小數點級別的寬度
+            const realWidth = th.getBoundingClientRect().width;
+            const widthPx = `${realWidth}px`;
+
+            // 同步給懸浮表頭
+            stickyThs[idx].style.minWidth = widthPx;
+            stickyThs[idx].style.width = widthPx;
+            stickyThs[idx].style.maxWidth = widthPx;
+            
+            // 將主表頭鎖死，避免後續 CSS 隱藏造成縮水
+            th.style.minWidth = widthPx;
+            th.style.width = widthPx;
+            th.style.maxWidth = widthPx;
+            
+            // 抓取最大高度
+            const realHeight = th.getBoundingClientRect().height;
+            if (realHeight > maxHeight) maxHeight = realHeight;
+        }
+    });
+    
+    // 4. 強制同步高度
+    if (maxHeight > 0) {
+        const stickyRow = document.getElementById('sticky-head-row');
+        if (stickyRow) stickyRow.style.height = `${maxHeight}px`;
+    }
+    
+    // 5. 同步整個 Table 的總寬度
+    const stickyTable = document.getElementById('sticky-table');
+    if (stickyTable) {
+        stickyTable.style.width = `${mainTable.getBoundingClientRect().width}px`;
+    }
+
+    // 6. 恢復隱藏狀態 (毫秒間完成，視覺零閃爍)
+    if (isHiddenMode) mainTable.classList.add('hide-attempts-mode');
+};
+
 const utilsUpdateUI = () => {
     document.body.classList.toggle('privacy-mode', GAME.privacy);
     $('#btn-privacy').innerText = GAME.privacy ? '顯示機密' : '隱藏機密';
@@ -316,7 +382,7 @@ const utilsUpdateUI = () => {
     if (GAME.useLake && GAME.playerCount >= 8) {
         show($('#lake-section'));
         $('#lake-holder').innerText = GAME.lake.holder > 0 ? GAME.lake.holder : '-';
-        $('#lake-history').innerHTML = GAME.lake.history.map((h) => `<div style="font-size:13px; padding:4px; margin-bottom:4px; background:#f8f9fa; border:1px solid #ddd; border-radius:4px;">第 ${h.round} 輪後：<strong>${h.from}號</strong> 驗 ${h.to}號 ➔ ${h.res==='evil'?'<span style="color:#d9534f;font-weight:bold;">壞人</span>':'<span style="color:#0dad0d;font-weight:bold;">好人</span>'}</div>`).join('');
+        $('#lake-history').innerHTML = GAME.lake.history.map((h) => `<div style="font-size:0.85rem; padding:4px; margin-bottom:4px; background:#f8f9fa; border:1px solid #ddd; border-radius:4px;">第 ${h.round} 輪後：<strong>${h.from}號</strong> 驗 ${h.to}號 ➔ ${h.res==='evil'?'<span style="color:#d9534f;font-weight:bold;">壞人</span>':'<span style="color:#0dad0d;font-weight:bold;">好人</span>'}</div>`).join('');
     } else hide($('#lake-section'));
 
     const headRow = $('#table-head-row'); const tbody = $('#table-body');
@@ -339,14 +405,14 @@ const utilsUpdateUI = () => {
         
         if (isHidden) {
             headRow.innerHTML += `<th style="vertical-align:middle; min-width:25px; padding:2px; background:#e0e0e0; cursor:pointer;" onclick="toggleColumn(${i})" title="點擊展開">
-                <div style="font-size:13px; font-weight:bold; color:#777;">${i}</div>
+                <div style="font-size:36px; font-weight:bold; color:#777;">${i}</div>
             </th>`;
             return;
         }
 
         let badge = logicGetVisionBadge(i);
         let lakeChecked = GAME.lake.history.find(h => h.to === i);
-        let lakeBadgeHtml = lakeChecked ? `<div style="font-size:0.75rem; font-weight:bold; color:${lakeChecked.res === 'evil'?'#d9534f':'#0dad0d'};">${lakeChecked.res === 'evil'?'壞':'好'}</div>` : '';
+        let lakeBadgeHtml = lakeChecked ? `<div style="font-size:24px; font-weight:bold; color:${lakeChecked.res === 'evil'?'#d9534f':'#0dad0d'};">${lakeChecked.res === 'evil'?'壞':'好'}</div>` : '';
         let m1 = icons[GAME.tableMarks1[i] || 0]; let m2 = icons[GAME.tableMarks2[i] || 0];
         let pTags = GAME.playerTags[i] || [];
         let tagsHtml = pTags.length > 0 ? `<div class="player-tag-container">` + pTags.map(t => `<div class="player-tag">${t}</div>`).join('') + `</div>` : '';
@@ -354,7 +420,7 @@ const utilsUpdateUI = () => {
         headRow.innerHTML += `<th style="vertical-align:top; min-width:60px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span>${i}號</span>
-                <span style="cursor:pointer; font-size:12px; opacity:0.6;" onclick="toggleColumn(${i})" title="隱藏此玩家">👁️</span>
+                <span style="cursor:pointer; font-size:24px; opacity:0.6;" onclick="toggleColumn(${i})" title="隱藏此玩家">👁️</span>
             </div>
             ${badge} ${lakeBadgeHtml}
             <div class="marker-group private-info">
@@ -386,7 +452,6 @@ const utilsUpdateUI = () => {
         tr.appendChild(infoTd2);
 
         const isLastRow = (index === GAME.history.length - 1);
-        const hasMission = (rec.failVotes !== undefined);
 
         // 依據新順序渲染表身欄位
         renderOrder.forEach(i => {
@@ -452,28 +517,7 @@ const utilsUpdateUI = () => {
         }
     });
 
-    setTimeout(() => {
-            const mainThs = document.querySelectorAll('#table-head-row th');
-            const stickyThs = document.querySelectorAll('#sticky-head-row th');
-            
-            mainThs.forEach((th, idx) => {
-                if (stickyThs[idx]) {
-                    // 獲取真實寬度 (含 padding)
-                    const realWidth = th.getBoundingClientRect().width;
-                    // 強制套用至懸浮表頭
-                    stickyThs[idx].style.minWidth = `${realWidth}px`;
-                    stickyThs[idx].style.width = `${realWidth}px`;
-                    stickyThs[idx].style.maxWidth = `${realWidth}px`;
-                }
-            });
-            
-            // 同步整個 Table 的總寬度，避免外框線對不齊
-            const mainTable = document.getElementById('record-table');
-            const stickyTable = document.getElementById('sticky-table');
-            if (mainTable && stickyTable) {
-                stickyTable.style.width = `${mainTable.getBoundingClientRect().width}px`;
-            }
-        }, 0);
+        setTimeout(window.syncStickyHeader, 0);
 };
 
 const utilsRenderSetup = () => {
@@ -727,7 +771,11 @@ window.onload = () => {
     // 1. 安全綁定字體縮放按鈕
     const fontScale = $('#font-size-scale');
     if (fontScale) {
-        fontScale.onchange = (e) => { document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; };
+        fontScale.onchange = (e) => { 
+            document.documentElement.style.fontSize = (16 * parseInt(e.target.value) / 100) + 'px'; 
+            // 字體改變後，強制瀏覽器重新計算寬高
+            setTimeout(window.syncStickyHeader, 10);
+        };
     }
     
     // 未上車可以標記驚嘆號
@@ -747,9 +795,29 @@ window.onload = () => {
     }
 
     // === 凍結表格標題功能 (CSS 懸浮同步) ===
+    // 動態計算 main-header 高度，並處理視窗改變時的表頭對齊
+    const updateHeaderHeight = () => {
+        const header = document.querySelector('.main-header');
+        if (header) {
+            document.documentElement.style.setProperty('--header-height', `${header.getBoundingClientRect().height}px`);
+        }
+        // 手機轉向或視窗縮放時，順便重新對齊表格寬度
+        if (typeof window.syncStickyHeader === 'function') {
+            window.syncStickyHeader();
+        }
+    };
+    window.addEventListener('resize', updateHeaderHeight);
+    updateHeaderHeight(); //
+
     if ($('#opt-sticky')) {
         const toggleSticky = (checked) => {
-            checked ? $('#sticky-header-container').classList.remove('hidden') : $('#sticky-header-container').classList.add('hidden');
+            if (checked) {
+                $('#sticky-header-wrapper').classList.remove('hidden'); // 改為操作 wrapper
+                $('#main-table-container').classList.add('sticky-enabled'); 
+            } else {
+                $('#sticky-header-wrapper').classList.add('hidden'); // 改為操作 wrapper
+                $('#main-table-container').classList.remove('sticky-enabled');
+            }
         };
         toggleSticky($('#opt-sticky').checked);
         $('#opt-sticky').onchange = (e) => toggleSticky(e.target.checked);
@@ -895,7 +963,8 @@ window.onload = () => {
         exportArea.style.padding = '20px';
         exportArea.style.background = '#f4f6f8';
         exportArea.style.color = '#333';
-        exportArea.style.width = '800px'; // 固定寬度確保圖片不會因為手機螢幕太窄而擠壓
+        exportArea.style.width = 'fit-content'; 
+        exportArea.style.minWidth = '800px';
         
         // 加入標題、日期與目前比分
         exportArea.innerHTML = `
@@ -910,7 +979,9 @@ window.onload = () => {
 
         // 複製表格區域
         const tableClone = $('.table-container').cloneNode(true);
-        
+        tableClone.classList.remove('sticky-enabled');
+        tableClone.style.overflow = 'visible';
+        tableClone.style.maxHeight = 'none';
         // 【優化出圖畫面 1】拔除所有的編輯按鈕 ("✎修改票", "✎改結果")
         tableClone.querySelectorAll('.edit-btn').forEach(btn => btn.remove());
         

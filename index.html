@@ -23,6 +23,7 @@
         <div class="header-left">
             <h1>阿瓦隆紀錄器</h1>
             <select id="font-size-scale" class="modern-select scale-select">
+                <option value="80">字體 80%</option>
                 <option value="100">字體 100%</option>
                 <option value="110">字體 110%</option>
                 <option value="120">字體 120%</option>
@@ -154,19 +155,20 @@
             <span><code>⚫!</code>內黑</span>
             <span><code>⚪!</code>外白</span>
             <span><code>⚫</code>外黑</span>
-            <span>🟦隊長</span>
             <span class="legend-team-mark">橘框:車上</span>
             <span id="legend-fails-req" class="text-danger fw-bold"></span>
         </div>
 
         <div class="table-macro-container" id="table-macro-container">
-            <!-- 懸浮用表頭 (與真實表格 X 軸同步) -->
-            <div id="sticky-header-container" class="sticky-header-container hidden">
-                <table id="sticky-table">
-                    <thead>
-                        <tr id="sticky-head-row"></tr>
-                    </thead>
-                </table>
+            <!-- 懸浮用表頭 -->
+            <div id="sticky-header-wrapper" class="sticky-header-wrapper hidden">
+                <div id="sticky-header-container" class="sticky-header-container">
+                    <table id="sticky-table">
+                        <thead>
+                            <tr id="sticky-head-row"></tr>
+                        </thead>
+                    </table>
+                </div>
             </div>
             
             <!-- 真實表格 (負責提供高度與橫向滾動) -->
@@ -180,7 +182,7 @@
             </div>
         </div>
 
-        <div id="lake-section" class="hidden config-box private-info lake-box">
+        <div id="lake-section" class="hidden config-box lake-box">
             <h4> 湖中仙女 (當前持有: <span id="lake-holder"></span>號)</h4>
             <div id="lake-history"></div>
         </div>
